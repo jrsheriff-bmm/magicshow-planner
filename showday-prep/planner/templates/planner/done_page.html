@@ -1,0 +1,17 @@
+{% extends "planner/public_base.html" %}
+{% comment %}[v3] /done/<code>/ — the "Mark done" button in reminder emails lands here. It asks once before changing anything.{% endcomment %}
+{% block title %}{{ label }} · {{ event.name }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <h1 style="margin:0 0 6px">{{ label }}</h1>
+  <p class="muted">{{ event.name }} · {{ date_long }}</p>
+  {% if already %}
+    <div class="banner info">This is already marked {{ done_word|lower }}. Nothing else to do.</div>
+  {% elif changed %}
+    <div class="banner info"><b>Marked {{ done_word|lower }}.</b> Thanks! The plan is updated and the reminders for this item stop.</div>
+  {% else %}
+    <form method="post">{% csrf_token %}<button class="btn primary">Yes, mark it {{ done_word|lower }}</button></form>
+  {% endif %}
+  {% if tasks_url %}<p style="margin-top:12px"><a href="{{ tasks_url }}">See all your tasks for this event →</a></p>{% endif %}
+</div>
+{% endblock %}

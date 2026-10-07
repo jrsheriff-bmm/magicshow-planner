@@ -1,0 +1,31 @@
+{% comment %}
+planner/templates/registration/login.html — the log-in page.
+[final] People log in with their email (older username logins still work), can create
+their own account at /signup/, and can reset a forgotten password. See planner/accounts.py.
+{% endcomment %}
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Log in · MagicShow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{% static 'planner/css/app.css' %}">
+</head>
+<body>
+  <div style="min-height:100vh;display:grid;place-items:center;padding:24px 16px">
+    <form method="post" class="panel" style="width:100%;max-width:380px">
+      {% csrf_token %}
+      <div><h1 style="font-size:26px">MagicShow</h1><p class="hint" style="margin-top:4px">Everything that happens before the show.</p></div>
+      {% if form.errors %}<div class="banner">That email and password didn't match. Try again, or reset your password.</div>{% endif %}
+      <div class="field"><label for="id_username">Email</label><input type="text" inputmode="email" name="username" id="id_username" autocomplete="username" autocapitalize="none" spellcheck="false" autofocus required><span class="hint">Have an older login? Your username works here too.</span></div>
+      <div class="field"><label for="id_password">Password</label><input type="password" name="password" id="id_password" autocomplete="current-password" required></div>
+      <input type="hidden" name="next" value="{{ next }}">
+      <button class="btn primary" type="submit" style="justify-content:center">Log in</button>
+      <p class="hint" style="display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap"><a href="{% url 'password_reset' %}">Forgot your password?</a><a href="{% url 'signup' %}">Create an account</a></p>
+    </form>
+  </div>
+</body>
+</html>

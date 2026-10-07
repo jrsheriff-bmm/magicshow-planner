@@ -1,0 +1,32 @@
+{% comment %}
+planner/templates/planner/public_base.html — [v3] the frame for pages people open from an email
+(My tasks, Mark done, Approve). No login needed, so these only show what that link is for.
+{% endcomment %}
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{% block title %}MagicShow{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{% static 'planner/css/app.css' %}">
+  <style>
+    body{background:var(--bg);color:var(--ink);font-family:var(--f-body)}
+    .pub{max-width:720px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:16px}
+    .pub form{display:inline}
+    .taskrow{display:grid;grid-template-columns:90px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+    .taskrow:first-of-type{border-top:0}
+    @media (max-width:560px){ .taskrow{grid-template-columns:1fr} }
+  </style>
+</head>
+<body>
+  <div class="pub">
+    <div class="eyebrow">MagicShow · {{ event.series|default:"Blackmagic Media" }}</div>
+    {% block content %}{% endblock %}
+    <p class="hint">This private page came from an email. Please don't forward it.</p>
+  </div>
+</body>
+</html>

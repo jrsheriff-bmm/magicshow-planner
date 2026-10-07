@@ -1,0 +1,30 @@
+{% comment %}
+planner/templates/planner/email.html — [v3] the HTML version of every email.
+Emails can't use the site's stylesheet, so the styles are written inline.
+{% endcomment %}<!doctype html>
+<html><body style="margin:0;padding:0;background:#F4F3F7;font-family:Segoe UI,Helvetica,Arial,sans-serif;color:#1C1827">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4F3F7;padding:24px 12px"><tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;background:#FFFFFF;border:1px solid #DCD8E6;border-radius:12px">
+  <tr><td style="padding:20px 24px 8px">
+    <div style="font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#5A3BC2;font-weight:600">MagicShow</div>
+    <h1 style="font-size:20px;margin:6px 0 4px">{{ title }}</h1>
+    <p style="margin:0;color:#5C566F;font-size:14px">{{ intro }}</p>
+  </td></tr>
+  {% for s in sections %}
+  <tr><td style="padding:12px 24px">
+    <div style="font-weight:600;font-size:15px;border-bottom:1px solid #ECEAF2;padding-bottom:6px;margin-bottom:6px">{{ s.heading }}</div>
+    {% for i in s.items %}
+      <div style="padding:8px 0;border-bottom:1px solid #F4F3F7;font-size:14px">
+        {% if i.tag %}<span style="display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:{% if i.tag == 'Overdue' %}#FBE3E0;color:#C0342A{% else %}#ECE7FB;color:#5A3BC2{% endif %}">{{ i.tag }}</span>{% endif %}
+        <span style="color:#847E98">{{ i.kind }}:</span> {{ i.text }}{% if i.due_text %} <span style="color:#847E98">· due {{ i.due_text }}</span>{% endif %}
+        {% if i.list %}<ul style="margin:6px 0 0;padding-left:18px;color:#5C566F;font-size:13px">{% for x in i.list %}<li>{{ x.tag }}: {{ x.text }}</li>{% endfor %}</ul>{% endif %}
+        {% if i.action %}<div style="margin-top:6px"><a href="{{ i.action }}" style="display:inline-block;background:#5A3BC2;color:#FFFFFF;text-decoration:none;padding:7px 14px;border-radius:8px;font-size:13px;font-weight:600">{{ i.action_label }}</a></div>{% endif %}
+      </div>
+    {% endfor %}
+    {% if s.tasks_url %}<p style="font-size:13px;margin:8px 0 0"><a href="{{ s.tasks_url }}" style="color:#5A3BC2">See all your tasks for this event →</a></p>{% endif %}
+  </td></tr>
+  {% endfor %}
+  <tr><td style="padding:12px 24px 20px;color:#847E98;font-size:12px">{{ footer }}</td></tr>
+</table>
+</td></tr></table>
+</body></html>

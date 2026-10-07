@@ -1,0 +1,10 @@
+{% autoescape off %}Hi,
+
+Someone asked to reset the MagicShow password for this email address. If that was you, open this link to choose a new one:
+
+{{ protocol }}://{{ domain }}{% url 'password_reset_confirm' uidb64=uid token=token %}
+
+The link works once, for a limited time. If you didn't ask for this, ignore this email and nothing changes.
+
+— MagicShow
+{% endautoescape %}

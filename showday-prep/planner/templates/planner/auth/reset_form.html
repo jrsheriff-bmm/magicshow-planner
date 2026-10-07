@@ -1,0 +1,12 @@
+{% extends "planner/auth/base.html" %}
+{% block title %}Reset your password · MagicShow{% endblock %}
+{% block content %}
+<form method="post" style="display:flex;flex-direction:column;gap:14px">
+  {% csrf_token %}
+  <h2>Forgot your password?</h2>
+  <p class="muted">Type the email you log in with. We'll send a private link to set a new password.</p>
+  <div class="field"><label for="id_email">Email</label><input type="email" name="email" id="id_email" autocomplete="email" required autofocus>{{ form.email.errors }}</div>
+  <button class="btn primary" type="submit" style="justify-content:center">Email me the link</button>
+  <p class="hint"><a href="{% url 'login' %}">Back to log in</a></p>
+</form>
+{% endblock %}

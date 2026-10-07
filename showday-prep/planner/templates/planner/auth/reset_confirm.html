@@ -1,0 +1,17 @@
+{% extends "planner/auth/base.html" %}
+{% block title %}Set a new password · MagicShow{% endblock %}
+{% block content %}
+{% if validlink %}
+<form method="post" style="display:flex;flex-direction:column;gap:14px">
+  {% csrf_token %}
+  <h2>Set a new password</h2>
+  <div class="field"><label for="id_new_password1">New password</label><input type="password" name="new_password1" id="id_new_password1" autocomplete="new-password" required autofocus>{{ form.new_password1.errors }}<span class="hint">At least 8 characters, and not only numbers.</span></div>
+  <div class="field"><label for="id_new_password2">Type it again</label><input type="password" name="new_password2" id="id_new_password2" autocomplete="new-password" required>{{ form.new_password2.errors }}</div>
+  <button class="btn primary" type="submit" style="justify-content:center">Save new password</button>
+</form>
+{% else %}
+<h2>This link has expired</h2>
+<p class="muted">Reset links work once, for a limited time. Ask for a new one.</p>
+<a class="btn primary" href="{% url 'password_reset' %}" style="justify-content:center">Send a new link</a>
+{% endif %}
+{% endblock %}

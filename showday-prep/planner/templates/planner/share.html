@@ -1,0 +1,90 @@
+{% comment %}
+planner/templates/planner/share.html — the private itinerary page for one group.
+
+Opened from a link like https://app.yoursite.com/s/<long-random-token>/
+No login needed, so it only shows what that group is tagged to see.
+{% endcomment %}
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex, nofollow">
+  <title>{{ event.name }} · {{ audience }} itinerary</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{% static 'planner/css/app.css' %}">
+  <style>
+    .share-wrap{max-width:760px;margin:0 auto;padding:24px 16px 48px;display:flex;flex-direction:column;gap:16px}
+    .share-actions{display:flex;flex-wrap:wrap;gap:8px}
+  </style>
+</head>
+<body>
+  <div class="share-wrap">
+    <div class="sheet">
+      <div class="sheet-top">
+        <span class="k">{{ event.series|default:"Blackmagic Media" }} · {{ audience }} itinerary</span>
+        <h2>{{ event.name }}</h2>
+        <div class="m"><span>{{ date_long }}</span>{% if event.venue %}<span>{{ event.venue }}</span>{% endif %}{% if event.address %}<span>{{ event.address }}</span>{% endif %}</div>
+      </div>
+      <div class="sheet-body">
+        {% if event.about %}<p>{{ event.about }}</p>{% endif %}
+
+        <div>
+          <div class="eyebrow" style="margin-bottom:6px">Your schedule</div>
+          {% for r in rows %}
+            <div class="sheet-row"><span class="t">{{ r.time }}</span><div>{{ r.title }}<div class="d">{{ r.detail }}</div></div></div>
+          {% empty %}
+            <p class="muted">Your schedule is still being finalized. Check back soon.</p>
+          {% endfor %}
+        </div>
+
+        {% if bring %}
+        <div>
+          <div class="eyebrow" style="margin-bottom:6px">Bring with you</div>
+          {% for q in bring %}
+            <div class="sheet-row"><span class="t">{{ q.qty }} ×</span><div>{{ q.item }}{% if q.owner %}<div class="d">{{ q.owner }}</div>{% endif %}</div></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if paperwork %}
+        <div>
+          <div class="eyebrow" style="margin-bottom:6px">Paperwork due</div>
+          {% for p in paperwork %}
+            <div class="sheet-row"><span class="t">{{ p.date }}</span><div>{{ p.item }}<div class="d">{{ p.detail }}</div></div></div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if rules %}
+        <div>
+          <div class="eyebrow" style="margin-bottom:6px">House rules</div>
+          {% for r in rules %}<div class="sheet-row"><span class="t">•</span><div>{{ r }}</div></div>{% endfor %}
+        </div>
+        {% endif %}
+
+        <div>
+          <div class="eyebrow" style="margin-bottom:6px">Who to contact</div>
+          {% for c in contacts %}
+            <div class="contact">
+              <div><b>{{ c.name }}</b><div class="muted" style="font-size:13px">{{ c.detail }}</div></div>
+              <div style="text-align:right">
+                {% if c.phone %}<span class="mono">{{ c.phone }}</span>{% else %}<span class="hint">Number shared on request</span>{% endif %}
+                {% if c.invoice %}<div><a href="{{ c.invoice }}" target="_blank" rel="noopener">Your quote or invoice</a></div>{% endif %}
+              </div>
+            </div>
+          {% empty %}
+            <p class="muted">Contacts will be added soon.</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    <div class="share-actions">
+      <a class="btn primary" href="{% url 'calendar_feed' token %}">Add my schedule to my calendar</a>
+    </div>
+    <p class="hint">This page updates automatically when plans change. Please don't forward it outside your team.</p>
+  </div>
+</body>
+</html>

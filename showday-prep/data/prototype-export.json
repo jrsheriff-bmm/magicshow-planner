@@ -1,0 +1,1685 @@
+{
+ "exported": "2026-09-29",
+ "source": "Showday Prep prototype v2",
+ "events": [
+  {
+   "about": "",
+   "address": "",
+   "capacity": "",
+   "compliance": [
+    {
+     "expires": "",
+     "files": [],
+     "id": "awdxczrp",
+     "item": "Venue agreement",
+     "notes": "",
+     "offset": -90,
+     "owner": "",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "b905a27j",
+     "item": "Speaker agreements and releases",
+     "notes": "",
+     "offset": -30,
+     "owner": "",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "0q19tkzp",
+     "item": "Catering order confirmed",
+     "notes": "",
+     "offset": -14,
+     "owner": "",
+     "status": "needed"
+    }
+   ],
+   "contacts": [
+    {
+     "audiences": [
+      "Internal",
+      "Performers",
+      "Vendors",
+      "Venue",
+      "Security"
+     ],
+     "email": "",
+     "id": "2bpexq6u",
+     "invoiceUrl": "",
+     "name": "",
+     "org": "",
+     "phone": "",
+     "role": "Event lead",
+     "showPhone": true
+    }
+   ],
+   "createdAt": 1790726316037,
+   "date": "2026-10-03",
+   "doors": "08:30",
+   "end": "16:30",
+   "equipment": [
+    {
+     "cat": "Stage & lighting",
+     "id": "b5bj0yei",
+     "item": "Projector",
+     "notes": "",
+     "owner": "",
+     "qty": 1,
+     "source": "Venue provides",
+     "status": "needed"
+    },
+    {
+     "cat": "Stage & lighting",
+     "id": "v41tedjp",
+     "item": "Projection screen",
+     "notes": "",
+     "owner": "",
+     "qty": 1,
+     "source": "Venue provides",
+     "status": "needed"
+    },
+    {
+     "cat": "Stage & lighting",
+     "id": "kh60tccr",
+     "item": "Presentation clicker",
+     "notes": "",
+     "owner": "",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Audio",
+     "id": "myb2xt13",
+     "item": "Wireless mics",
+     "notes": "",
+     "owner": "",
+     "qty": 2,
+     "source": "Venue provides",
+     "status": "needed"
+    },
+    {
+     "cat": "Audio",
+     "id": "g889207b",
+     "item": "Power strips and extension cords",
+     "notes": "",
+     "owner": "",
+     "qty": 6,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Front of house",
+     "id": "b0ea72ve",
+     "item": "Name badges",
+     "notes": "",
+     "owner": "",
+     "qty": 120,
+     "source": "Buy",
+     "status": "needed"
+    },
+    {
+     "cat": "Supplies",
+     "id": "zt7q8gyp",
+     "item": "Handouts",
+     "notes": "",
+     "owner": "",
+     "qty": 120,
+     "source": "Buy",
+     "status": "needed"
+    },
+    {
+     "cat": "Front of house",
+     "id": "tdcjqe6c",
+     "item": "Registration laptop",
+     "notes": "",
+     "owner": "",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Signage & decor",
+     "id": "0x323qmh",
+     "item": "Wi-Fi info sign",
+     "notes": "",
+     "owner": "",
+     "qty": 2,
+     "source": "Buy",
+     "status": "needed"
+    }
+   ],
+   "host": "",
+   "houseRules": [],
+   "id": "r7gnfhhe",
+   "kind": "organizer",
+   "layout": {
+    "image": "",
+    "pieces": [],
+    "pins": [],
+    "room": {
+     "d": 80,
+     "w": 60
+    }
+   },
+   "milestones": [
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": true,
+     "id": "7avqbr7c",
+     "offset": -90,
+     "owner": "",
+     "phase": "Venue & permits",
+     "status": "todo",
+     "title": "Venue booked"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "u4f4zpnp",
+     "offset": -60,
+     "owner": "",
+     "phase": "Venue & permits",
+     "status": "todo",
+     "title": "Speakers confirmed"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "gj80x9t5",
+     "offset": -45,
+     "owner": "",
+     "phase": "Promotion",
+     "status": "todo",
+     "title": "Registration live"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": true,
+     "id": "7162q554",
+     "offset": -21,
+     "owner": "",
+     "phase": "Production & site",
+     "status": "todo",
+     "title": "Agenda final"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "wgsfmrx4",
+     "offset": -14,
+     "owner": "",
+     "phase": "Production & site",
+     "status": "todo",
+     "title": "Catering order"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "e4qwr2vx",
+     "offset": -7,
+     "owner": "",
+     "phase": "Final prep",
+     "status": "todo",
+     "title": "Slides due from speakers"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "emt7niol",
+     "offset": -5,
+     "owner": "",
+     "phase": "Final prep",
+     "status": "todo",
+     "title": "Materials printed"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "i7wn9l9e",
+     "offset": -1,
+     "owner": "",
+     "phase": "Final prep",
+     "status": "todo",
+     "title": "AV check"
+    }
+   ],
+   "name": "test",
+   "priceAdv": "",
+   "priceDoor": "",
+   "program": {
+    "items": [
+     {
+      "audiences": [
+       "Internal",
+       "Performers",
+       "Vendors"
+      ],
+      "dur": 30,
+      "id": "bujvfqup",
+      "notes": "",
+      "title": "Check-in and coffee",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 15,
+      "id": "h84ydhoy",
+      "notes": "",
+      "title": "Welcome",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 60,
+      "id": "sm2a6421",
+      "notes": "",
+      "title": "Session 1",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers",
+       "Vendors"
+      ],
+      "dur": 15,
+      "id": "tqsc9xu3",
+      "notes": "",
+      "title": "Break",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 60,
+      "id": "jp0ws3xr",
+      "notes": "",
+      "title": "Session 2",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers",
+       "Vendors"
+      ],
+      "dur": 60,
+      "id": "medzoym2",
+      "notes": "",
+      "title": "Lunch",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 90,
+      "id": "fotf4iyx",
+      "notes": "",
+      "title": "Workshop",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers",
+       "Vendors"
+      ],
+      "dur": 15,
+      "id": "p5p2zgqm",
+      "notes": "",
+      "title": "Break",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 45,
+      "id": "wol3cp6j",
+      "notes": "",
+      "title": "Panel",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 15,
+      "id": "p5bukvyp",
+      "notes": "",
+      "title": "Closing",
+      "who": ""
+     }
+    ],
+    "start": "08:30"
+   },
+   "series": "",
+   "setup": [
+    {
+     "audiences": [
+      "Internal",
+      "Venue"
+     ],
+     "end": "08:00",
+     "id": "3imxa2a1",
+     "notes": "",
+     "start": "07:00",
+     "title": "Room setup and AV",
+     "track": "Production"
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors"
+     ],
+     "end": "08:30",
+     "id": "sfq2gvjs",
+     "notes": "",
+     "start": "07:45",
+     "title": "Registration desk",
+     "track": "Doors & security"
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors"
+     ],
+     "end": "08:30",
+     "id": "syb90o93",
+     "notes": "",
+     "start": "07:45",
+     "title": "Coffee service set",
+     "track": "Food & bar"
+    }
+   ],
+   "target": "",
+   "updatedAt": 1790726316037,
+   "venue": ""
+  },
+  {
+   "about": "",
+   "address": "812 Washington ave",
+   "capacity": 100,
+   "compliance": [],
+   "contacts": [
+    {
+     "audiences": [
+      "Internal",
+      "Performers",
+      "Vendors",
+      "Venue",
+      "Security"
+     ],
+     "email": "",
+     "id": "zcfsq5ow",
+     "invoiceUrl": "",
+     "name": "Hananiah Hardin",
+     "org": "BMM",
+     "phone": "2693381663",
+     "role": "Event lead",
+     "showPhone": true
+    }
+   ],
+   "createdAt": 1790714361017,
+   "date": "2026-10-22",
+   "doors": "19:30",
+   "end": "21:00",
+   "host": "Angelina ",
+   "id": "5hneqtlh",
+   "milestones": [],
+   "name": "Cauldron Concerts",
+   "priceAdv": 10,
+   "priceDoor": 15,
+   "program": {
+    "items": [],
+    "start": "18:00"
+   },
+   "series": "Ep 1",
+   "setup": [
+    {
+     "audiences": [
+      "Internal"
+     ],
+     "end": "16:30",
+     "id": "0m9ibipd",
+     "start": "16:00",
+     "title": "New setup item",
+     "track": "Production"
+    }
+   ],
+   "target": 70,
+   "updatedAt": 1790714568346,
+   "venue": "The Cauldron "
+  },
+  {
+   "about": "Indoor indie/alternative showcase with live music, food by Quackers Kitchen and a cash bar by ENA - One Well. Final breakdown can finish Sunday morning per the venue agreement.",
+   "address": "",
+   "capacity": 300,
+   "compliance": [
+    {
+     "expires": "",
+     "files": [],
+     "id": "k43",
+     "item": "Venue rental agreement ($400 half-day or full-day rate)",
+     "notes": "",
+     "offset": -69,
+     "owner": "BMM",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "k44",
+     "item": "MLCC special event liquor license",
+     "notes": "Plan names two bar vendors; confirm which one holds this",
+     "offset": -61,
+     "owner": "Polly & Birch Mobile Bartending",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "k45",
+     "item": "Hold harmless waiver in online tickets + printed sign-offs at the door",
+     "notes": "Releases BMM, the Farmers Market and the City of Kalamazoo",
+     "offset": -54,
+     "owner": "BMM",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "k46",
+     "item": "Kitchen floor protection plan to venue",
+     "notes": "",
+     "offset": -45,
+     "owner": "Quackers Kitchen",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "k47",
+     "item": "Security staffing confirmed (door, bar perimeter, smoking area)",
+     "notes": "",
+     "offset": -41,
+     "owner": "",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "k48",
+     "item": "Bar general liability insurance to JR",
+     "notes": "",
+     "offset": -14,
+     "owner": "ENA - One Well",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "k49",
+     "item": "Temporary Food Establishment Permit / MDARD license",
+     "notes": "Renewal in progress; backup is off-site prep with commercial warmers",
+     "offset": -14,
+     "owner": "Quackers Kitchen",
+     "status": "submitted"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "k50",
+     "item": "ServSafe certification",
+     "notes": "",
+     "offset": -14,
+     "owner": "Quackers Kitchen",
+     "status": "needed"
+    },
+    {
+     "expires": "",
+     "files": [],
+     "id": "k51",
+     "item": "Rubber padding under stage footings",
+     "notes": "Venue property protection requirement",
+     "offset": -11,
+     "owner": "BMM",
+     "status": "needed"
+    }
+   ],
+   "contacts": [
+    {
+     "audiences": [
+      "Internal",
+      "Performers",
+      "Vendors",
+      "Venue",
+      "Security"
+     ],
+     "email": "",
+     "id": "c27",
+     "invoiceUrl": "",
+     "name": "Hananiah Hardin",
+     "org": "BMM",
+     "phone": "269-338-1663",
+     "role": "BMM event lead",
+     "showPhone": true
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Performers",
+      "Venue"
+     ],
+     "email": "",
+     "id": "c28",
+     "invoiceUrl": "",
+     "name": "JR Sheriff",
+     "org": "BMM",
+     "phone": "269-930-0637",
+     "role": "Production tech",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Venue",
+      "Vendors"
+     ],
+     "email": "",
+     "id": "c29",
+     "invoiceUrl": "",
+     "name": "JR and Marcus",
+     "org": "Kalamazoo Farmers Market",
+     "phone": "248-396-2904",
+     "role": "Venue manager",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Performers"
+     ],
+     "email": "",
+     "id": "c30",
+     "invoiceUrl": "",
+     "name": "Quiency Ellis",
+     "org": "",
+     "phone": "269-720-0469",
+     "role": "Event host",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Security"
+     ],
+     "email": "",
+     "id": "c31",
+     "invoiceUrl": "",
+     "name": "Jada Holmes & Martineee Williams/Markeya",
+     "org": "",
+     "phone": "313-348-3648",
+     "role": "Ticket and welcome table",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors",
+      "Venue"
+     ],
+     "email": "",
+     "id": "c32",
+     "invoiceUrl": "",
+     "name": "Lanquya Moore",
+     "org": "Quackers Kitchen",
+     "phone": "313-268-9777",
+     "role": "Food service lead",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors",
+      "Venue",
+      "Security"
+     ],
+     "email": "",
+     "id": "c33",
+     "invoiceUrl": "",
+     "name": "ENA - One Well",
+     "org": "ENA - One Well",
+     "phone": "269-532-4282",
+     "role": "Bar service",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Security"
+     ],
+     "email": "",
+     "id": "c34",
+     "invoiceUrl": "",
+     "name": "",
+     "org": "",
+     "phone": "",
+     "role": "Security lead",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Performers"
+     ],
+     "email": "",
+     "id": "c35",
+     "invoiceUrl": "",
+     "name": "Two Dollar Bills",
+     "org": "",
+     "phone": "",
+     "role": "Headliner",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Performers"
+     ],
+     "email": "",
+     "id": "c36",
+     "invoiceUrl": "",
+     "name": "Buddhahand",
+     "org": "",
+     "phone": "",
+     "role": "Direct support",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Performers"
+     ],
+     "email": "",
+     "id": "c37",
+     "invoiceUrl": "",
+     "name": "Celeste Aillison",
+     "org": "",
+     "phone": "",
+     "role": "Opener",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors"
+     ],
+     "email": "",
+     "id": "c38",
+     "invoiceUrl": "",
+     "name": "Angelina",
+     "org": "Midwest Photography Collective",
+     "phone": "",
+     "role": "Photography vendor",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors"
+     ],
+     "email": "",
+     "id": "c39",
+     "invoiceUrl": "",
+     "name": "Loaves and Fishes",
+     "org": "Loaves and Fishes",
+     "phone": "",
+     "role": "Nonprofit table (2 food barrels + info table)",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors"
+     ],
+     "email": "",
+     "id": "c40",
+     "invoiceUrl": "",
+     "name": "Art X Tyler",
+     "org": "",
+     "phone": "",
+     "role": "Visual artist vendor",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors"
+     ],
+     "email": "",
+     "id": "c41",
+     "invoiceUrl": "",
+     "name": "Faith Lacy",
+     "org": "",
+     "phone": "",
+     "role": "Visual artist vendor",
+     "showPhone": false
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Security"
+     ],
+     "email": "",
+     "id": "c42",
+     "invoiceUrl": "",
+     "name": "Kalamazoo Public Safety",
+     "org": "",
+     "phone": "269-488-8911",
+     "role": "Emergency (non-emergency line)",
+     "showPhone": true
+    }
+   ],
+   "createdAt": 1790700000000,
+   "date": "2026-11-14",
+   "doors": "19:00",
+   "end": "23:00",
+   "equipment": [
+    {
+     "cat": "Stage & lighting",
+     "id": "q1",
+     "item": "Stage modules (4×6 ft)",
+     "notes": "",
+     "owner": "BMM",
+     "qty": 6,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Stage & lighting",
+     "id": "q2",
+     "item": "Rubber base padding (under stage footings)",
+     "notes": "Venue requirement",
+     "owner": "BMM",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Stage & lighting",
+     "id": "q3",
+     "item": "Lighting rigs / lighting trees",
+     "notes": "Qty to confirm",
+     "owner": "BMM",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Audio",
+     "id": "q4",
+     "item": "Main speakers",
+     "notes": "Qty to confirm",
+     "owner": "BMM",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Audio",
+     "id": "q5",
+     "item": "Subwoofers",
+     "notes": "Qty to confirm",
+     "owner": "BMM",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Audio",
+     "id": "q6",
+     "item": "Stage monitors",
+     "notes": "Qty to confirm",
+     "owner": "BMM",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Audio",
+     "id": "q7",
+     "item": "Mixing board",
+     "notes": "",
+     "owner": "BMM",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Audio",
+     "id": "q8",
+     "item": "Vocal and instrument mics",
+     "notes": "Qty to confirm",
+     "owner": "BMM",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Audio",
+     "id": "q9",
+     "item": "Cabling and power drops",
+     "notes": "Qty to confirm",
+     "owner": "BMM",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Front of house",
+     "id": "q10",
+     "item": "Welcome and ticket table (6 ft)",
+     "notes": "Source to confirm",
+     "owner": "",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Front of house",
+     "id": "q11",
+     "item": "Ticket scanner or phone",
+     "notes": "",
+     "owner": "",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Front of house",
+     "id": "q12",
+     "item": "Cash box for $20 door tickets",
+     "notes": "",
+     "owner": "",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Front of house",
+     "id": "q13",
+     "item": "21+ wristbands",
+     "notes": "Qty to confirm",
+     "owner": "",
+     "qty": 1,
+     "source": "Buy",
+     "status": "needed"
+    },
+    {
+     "cat": "Front of house",
+     "id": "q14",
+     "item": "Printed hold harmless sign-off sheets (door tickets)",
+     "notes": "Qty to confirm",
+     "owner": "",
+     "qty": 1,
+     "source": "Buy",
+     "status": "needed"
+    },
+    {
+     "cat": "Food & bar",
+     "id": "q15",
+     "item": "Bar tables (6 ft): order & pay, serving",
+     "notes": "Source to confirm",
+     "owner": "ENA - One Well",
+     "qty": 2,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Food & bar",
+     "id": "q16",
+     "item": "Warming trays / chafing dishes and Sternos",
+     "notes": "",
+     "owner": "Quackers Kitchen",
+     "qty": 1,
+     "source": "Vendor brings",
+     "status": "needed"
+    },
+    {
+     "cat": "Food & bar",
+     "id": "q17",
+     "item": "Food gloves, wax wrappers, compostable baskets, napkins",
+     "notes": "",
+     "owner": "Quackers Kitchen",
+     "qty": 1,
+     "source": "Vendor brings",
+     "status": "needed"
+    },
+    {
+     "cat": "Food & bar",
+     "id": "q18",
+     "item": "Menu board with prices and dietary labels (V, VG, GF)",
+     "notes": "",
+     "owner": "Quackers Kitchen",
+     "qty": 1,
+     "source": "Vendor brings",
+     "status": "needed"
+    },
+    {
+     "cat": "Food & bar",
+     "id": "q19",
+     "item": "Kitchen floor mats / protection roll",
+     "notes": "Venue requirement",
+     "owner": "Quackers Kitchen",
+     "qty": 1,
+     "source": "Vendor brings",
+     "status": "needed"
+    },
+    {
+     "cat": "Food & bar",
+     "id": "q20",
+     "item": "POS system / cash box for food",
+     "notes": "",
+     "owner": "Quackers Kitchen",
+     "qty": 1,
+     "source": "Vendor brings",
+     "status": "needed"
+    },
+    {
+     "cat": "Signage & decor",
+     "id": "q21",
+     "item": "Vendor tables (6 ft)",
+     "notes": "Source to confirm",
+     "owner": "",
+     "qty": 3,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Food & bar",
+     "id": "q22",
+     "item": "Food donation barrels",
+     "notes": "",
+     "owner": "Loaves and Fishes",
+     "qty": 2,
+     "source": "Vendor brings",
+     "status": "needed"
+    },
+    {
+     "cat": "Signage & decor",
+     "id": "q23",
+     "item": "Info table (6 ft) for Loaves and Fishes",
+     "notes": "Source to confirm",
+     "owner": "",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    },
+    {
+     "cat": "Safety",
+     "id": "q24",
+     "item": "Rope for smoking area boundary",
+     "notes": "Area is roped off outside the exit",
+     "owner": "",
+     "qty": 1,
+     "source": "Owned",
+     "status": "needed"
+    }
+   ],
+   "host": "Quiency Ellis",
+   "houseRules": [],
+   "id": "mystic-ep4",
+   "kind": "organizer",
+   "layout": {
+    "image": "",
+    "pieces": [
+     {
+      "h": 4,
+      "id": "z1",
+      "kind": "stage",
+      "label": "Stage",
+      "rot": 0,
+      "w": 6,
+      "x": 21,
+      "y": 3
+     },
+     {
+      "h": 4,
+      "id": "z2",
+      "kind": "stage",
+      "label": "Stage",
+      "rot": 0,
+      "w": 6,
+      "x": 27,
+      "y": 3
+     },
+     {
+      "h": 4,
+      "id": "z3",
+      "kind": "stage",
+      "label": "Stage",
+      "rot": 0,
+      "w": 6,
+      "x": 33,
+      "y": 3
+     },
+     {
+      "h": 4,
+      "id": "z4",
+      "kind": "stage",
+      "label": "Stage",
+      "rot": 0,
+      "w": 6,
+      "x": 21,
+      "y": 7
+     },
+     {
+      "h": 4,
+      "id": "z5",
+      "kind": "stage",
+      "label": "Stage",
+      "rot": 0,
+      "w": 6,
+      "x": 27,
+      "y": 7
+     },
+     {
+      "h": 4,
+      "id": "z6",
+      "kind": "stage",
+      "label": "Stage",
+      "rot": 0,
+      "w": 6,
+      "x": 33,
+      "y": 7
+     },
+     {
+      "h": 2,
+      "id": "z7",
+      "kind": "speaker",
+      "label": "Spkr",
+      "rot": 0,
+      "w": 2,
+      "x": 18,
+      "y": 4
+     },
+     {
+      "h": 2,
+      "id": "z8",
+      "kind": "speaker",
+      "label": "Spkr",
+      "rot": 0,
+      "w": 2,
+      "x": 40,
+      "y": 4
+     },
+     {
+      "h": 12,
+      "id": "z9",
+      "kind": "zone",
+      "label": "Food serving (kitchen door)",
+      "rot": 0,
+      "w": 15,
+      "x": 43.5,
+      "y": 18
+     },
+     {
+      "h": 2.5,
+      "id": "z10",
+      "kind": "table6",
+      "label": "Bar: order & pay",
+      "rot": 90,
+      "w": 6,
+      "x": 55.5,
+      "y": 36
+     },
+     {
+      "h": 2.5,
+      "id": "z11",
+      "kind": "table6",
+      "label": "Bar: serving",
+      "rot": 90,
+      "w": 6,
+      "x": 55.5,
+      "y": 44
+     },
+     {
+      "h": 2.5,
+      "id": "z12",
+      "kind": "table6",
+      "label": "Vendor: Angelina",
+      "rot": 90,
+      "w": 6,
+      "x": 1,
+      "y": 40
+     },
+     {
+      "h": 2.5,
+      "id": "z13",
+      "kind": "table6",
+      "label": "Vendor: Art X Tyler",
+      "rot": 90,
+      "w": 6,
+      "x": 1,
+      "y": 52
+     },
+     {
+      "h": 2.5,
+      "id": "z14",
+      "kind": "table6",
+      "label": "Vendor: Faith Lacy",
+      "rot": 90,
+      "w": 6,
+      "x": 1,
+      "y": 64
+     },
+     {
+      "h": 2.5,
+      "id": "z15",
+      "kind": "table6",
+      "label": "Welcome & tickets",
+      "rot": 0,
+      "w": 6,
+      "x": 3,
+      "y": 4
+     },
+     {
+      "h": 9,
+      "id": "z16",
+      "kind": "zone",
+      "label": "Loaves and Fishes",
+      "rot": 0,
+      "w": 16,
+      "x": 22,
+      "y": 79
+     },
+     {
+      "h": 1,
+      "id": "z17",
+      "kind": "door",
+      "label": "Entrance",
+      "rot": 0,
+      "w": 5,
+      "x": 9,
+      "y": 0
+     },
+     {
+      "h": 1,
+      "id": "z18",
+      "kind": "door",
+      "label": "Exit",
+      "rot": 0,
+      "w": 5,
+      "x": 10,
+      "y": 89
+     },
+     {
+      "h": 1,
+      "id": "z19",
+      "kind": "door",
+      "label": "Exit",
+      "rot": 0,
+      "w": 5,
+      "x": 44,
+      "y": 89
+     },
+     {
+      "h": 2,
+      "id": "z20",
+      "kind": "label",
+      "label": "Kitchen →",
+      "rot": 0,
+      "w": 14,
+      "x": 44,
+      "y": 13
+     },
+     {
+      "h": 2,
+      "id": "z21",
+      "kind": "label",
+      "label": "Smoking area →",
+      "rot": 0,
+      "w": 12,
+      "x": 46,
+      "y": 75
+     },
+     {
+      "h": 2.5,
+      "id": "nfpfpnqy",
+      "kind": "table8",
+      "label": "",
+      "rot": 0,
+      "w": 8,
+      "x": 20,
+      "y": 52
+     }
+    ],
+    "pins": [],
+    "room": {
+     "d": 90,
+     "w": 60
+    }
+   },
+   "milestones": [
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m1",
+     "offset": -69,
+     "owner": "",
+     "phase": "Venue & permits",
+     "status": "todo",
+     "title": "Submit venue application and rental agreement to JR (Kalamazoo Farmers Market)"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m2",
+     "offset": -61,
+     "owner": "",
+     "phase": "Venue & permits",
+     "status": "todo",
+     "title": "Confirm MLCC special event liquor permit path and insurance with bar vendor"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m3",
+     "offset": -54,
+     "owner": "",
+     "phase": "Venue & permits",
+     "status": "todo",
+     "title": "Ticket portal live ($15 advance / $20 door) with hold harmless waiver"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m4",
+     "offset": -45,
+     "owner": "",
+     "phase": "Production & site",
+     "status": "todo",
+     "title": "Kitchen layout map and equipment needs with Quackers Kitchen; floor protection plan to JR"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m5",
+     "offset": -41,
+     "owner": "",
+     "phase": "Production & site",
+     "status": "todo",
+     "title": "Confirm BMM sound, lighting and staging inventory"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": true,
+     "id": "m6",
+     "offset": -41,
+     "owner": "",
+     "phase": "Production & site",
+     "status": "todo",
+     "title": "Complete all show setups and site operations: stage, floor plan, menu pricing, security posts, set times"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m7",
+     "offset": -41,
+     "owner": "",
+     "phase": "Promotion",
+     "status": "todo",
+     "title": "Final flyers, promo clips from past shows and social assets"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": true,
+     "id": "m8",
+     "offset": -40,
+     "owner": "",
+     "phase": "Promotion",
+     "status": "todo",
+     "title": "Launch full promotional campaign and open ticket sales"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m9",
+     "offset": -33,
+     "owner": "",
+     "phase": "Final prep",
+     "status": "todo",
+     "title": "Review ticket presales and project guest count"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m10",
+     "offset": -19,
+     "owner": "",
+     "phase": "Final prep",
+     "status": "todo",
+     "title": "Send final event plan, contact directory and run of show to all teams, artists, vendors and venue staff"
+    },
+    {
+     "checklist": [],
+     "desc": "",
+     "hard": false,
+     "id": "m11",
+     "offset": -11,
+     "owner": "",
+     "phase": "Final prep",
+     "status": "todo",
+     "title": "Final walkthrough with venue management (JR) and security team, 5:30 PM"
+    }
+   ],
+   "name": "Mystic Music Ep. 4",
+   "priceAdv": 15,
+   "priceDoor": 20,
+   "program": {
+    "items": [
+     {
+      "audiences": [
+       "Internal",
+       "Performers",
+       "Vendors",
+       "Venue",
+       "Security"
+      ],
+      "dur": 60,
+      "id": "p19",
+      "title": "Doors open, background audio, food and drink",
+      "who": ""
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 10,
+      "id": "p20",
+      "title": "Welcome and host introduction",
+      "who": "Quiency Ellis"
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 45,
+      "id": "p21",
+      "title": "Opener",
+      "who": "Celeste Aillison"
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers",
+       "Vendors"
+      ],
+      "dur": 15,
+      "id": "p22",
+      "title": "Intermission and host remarks",
+      "who": "Quiency Ellis"
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 45,
+      "id": "p23",
+      "title": "Direct support",
+      "who": "Buddhahand"
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers",
+       "Vendors"
+      ],
+      "dur": 15,
+      "id": "p24",
+      "title": "Intermission and announcements",
+      "who": "Quiency Ellis"
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers"
+      ],
+      "dur": 45,
+      "id": "p25",
+      "title": "Headliner",
+      "who": "Two Dollar Bills"
+     },
+     {
+      "audiences": [
+       "Internal",
+       "Performers",
+       "Vendors",
+       "Venue",
+       "Security"
+      ],
+      "dur": 5,
+      "id": "p26",
+      "title": "Closing remarks and wrap",
+      "who": "Quiency Ellis"
+     }
+    ],
+    "start": "19:00"
+   },
+   "series": "Mystic Music",
+   "setup": [
+    {
+     "audiences": [
+      "Internal",
+      "Venue"
+     ],
+     "end": "16:30",
+     "id": "s12",
+     "start": "15:00",
+     "title": "BMM load-in: stage modules, rubber base, subwoofers, speakers, monitors, lighting, cabling",
+     "track": "Production"
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Vendors",
+      "Venue"
+     ],
+     "end": "18:30",
+     "id": "s13",
+     "start": "16:00",
+     "title": "Quackers Kitchen and bar load-in and setup (floor mats down first)",
+     "track": "Food & bar"
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Venue"
+     ],
+     "end": "17:00",
+     "id": "s14",
+     "start": "16:30",
+     "title": "Stage and rigging: rubber pad, lighting trees, subs, power drops",
+     "track": "Production"
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Performers"
+     ],
+     "end": "18:25",
+     "id": "s15",
+     "start": "17:00",
+     "title": "Sound checks: Celeste Aillison, Buddhahand, Two Dollar Bills",
+     "track": "Program & talent"
+    },
+    {
+     "audiences": [
+      "Internal"
+     ],
+     "end": "18:45",
+     "id": "s16",
+     "start": "18:25",
+     "title": "FOH final check",
+     "track": "Production"
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Security"
+     ],
+     "end": "19:00",
+     "id": "s17",
+     "start": "18:30",
+     "title": "Security and door staff briefing",
+     "track": "Doors & security"
+    },
+    {
+     "audiences": [
+      "Internal",
+      "Venue",
+      "Performers"
+     ],
+     "end": "23:30",
+     "id": "s18",
+     "start": "23:00",
+     "title": "Initial venue sweep; pack instruments and sensitive electronics",
+     "track": "Production"
+    }
+   ],
+   "target": 100,
+   "updatedAt": 1790726226337,
+   "venue": "Kalamazoo Farmers Market Barn House"
+  }
+ ],
+ "people": [],
+ "notes": [
+  {
+   "createdAt": 1790713826513,
+   "done": false,
+   "eventId": "",
+   "text": "I think on the papers and permits page. We should be able to upload, view, and download the document",
+   "where": "Events home",
+   "id": "dbxa1e7yndw8cd6ep9d8"
+  },
+  {
+   "createdAt": 1790713874496,
+   "done": false,
+   "eventId": "",
+   "text": "I think there should be a page for the contacts. Where we should be able to send them and store them from people",
+   "where": "Events home",
+   "id": "eaeuoscwmfhm1bt8vdtw"
+  },
+  {
+   "createdAt": 1790713927269,
+   "done": false,
+   "eventId": "mystic-ep4",
+   "text": "We need a page where we can see the venue layout and or build the layout of the event.",
+   "where": "Mystic Music Ep. 4 · Overview",
+   "id": "22jzt6zpb2kqoqsb15t8"
+  },
+  {
+   "createdAt": 1790714127102,
+   "done": false,
+   "eventId": "mystic-ep4",
+   "text": "I think the show day at a glace should me more readable. I like that I see the timeline, but I think for the average user it could be overwhelming. Plus if you're looking at it on the fly you would have to look hard.",
+   "where": "Mystic Music Ep. 4 · Run of show",
+   "id": "h89wyoelzj431v8ae3py"
+  },
+  {
+   "createdAt": 1790714206865,
+   "done": false,
+   "eventId": "mystic-ep4",
+   "text": "Also I want to be able to click on the icons on show day at a glance. I like the seamlessness of it I just cant read some of the things",
+   "where": "Mystic Music Ep. 4 · Run of show",
+   "id": "jorqew1afb9s9hjhs38h"
+  },
+  {
+   "createdAt": 1790714308610,
+   "done": false,
+   "eventId": "mystic-ep4",
+   "text": "On the Shared pages, I think we should link to the website so it can be sent to everyone involved, not just those directly involved in event planning.",
+   "where": "Mystic Music Ep. 4 · Share pages",
+   "id": "y41i5yqstw33iyk4p9my"
+  },
+  {
+   "createdAt": 1790714534469,
+   "done": false,
+   "eventId": "5hneqtlh",
+   "text": "Also we should be able to print or save each page and or have AI create a master event plan from the information we input. It probably won't need all the data, but just the high-level stuff you could go over in a meeting with a supervisor or client.",
+   "where": "Cauldron Concerts · Overview",
+   "id": "fcjcix5tccztxfxwgsi6"
+  },
+  {
+   "createdAt": 1790715059221,
+   "done": false,
+   "eventId": "5hneqtlh",
+   "text": "I like that we have pre loaded tempaltes people could use. It makes the user experices easier. I think we need to make a list of 10 of the most commoly put on events, big and small lots an money or a littile. So we can have a good amount of tenplates fro people to chosse from and enter there data in.",
+   "where": "Cauldron Concerts · Run of show",
+   "id": "476u9ktysdhczu3yrxcv"
+  },
+  {
+   "createdAt": 1790715236509,
+   "done": false,
+   "eventId": "5hneqtlh",
+   "text": "I think we need an equipment check and ad in page. So we can have interactive list that a clinte could add all the equipmnet that it takes to put on the event. Like speakers, mics, a stage ticktes a stamp. Everything involved should be able to be added and checked. We should also have the equimnet list have some pre loaded intems depened on the tempalte they choose.",
+   "where": "Cauldron Concerts · Run of show",
+   "id": "lm6x9jhjs1wuxf4fempo"
+  },
+  {
+   "createdAt": 1790715410000,
+   "done": false,
+   "eventId": "5hneqtlh",
+   "text": "I think we should have a tempalte or a version that can be used by the venues themsleves. Becasue they have a diffeert set of problems and things they need. From a event planner or orgastion planning an event. For example imagine Bells using that version or tempalte.",
+   "where": "Cauldron Concerts · Run of show",
+   "id": "urefxi7ijv0vlkg3yfkj"
+  },
+  {
+   "createdAt": 1790715636411,
+   "done": false,
+   "eventId": "mystic-ep4",
+   "text": "The deadline page is nice, but like with Jira. I want to be able to click into each deadline and edit it like a card. Plus, I am not able to read the whole description in its current view.",
+   "where": "Mystic Music Ep. 4 · Deadlines",
+   "id": "og3u29snb31rvglp3vp1"
+  }
+ ]
+}

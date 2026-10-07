@@ -1,0 +1,24 @@
+{% extends "planner/public_base.html" %}
+{% comment %}[v3] /a/<token>/ — the approver's page. Approve or decline, with an optional comment. No login needed.{% endcomment %}
+{% block title %}Approval: {{ approval.label }}{% endblock %}
+{% block content %}
+<div class="panel">
+  <div class="eyebrow">Approval request</div>
+  <h1 style="margin:4px 0 6px">{{ approval.label }}</h1>
+  <p class="muted">{{ event.name }} · {{ date_long }}{% if approval.requested_by_name %} · asked by {{ approval.requested_by_name }}{% endif %}</p>
+  {% if approval.note %}<p><b>Note:</b> {{ approval.note }}</p>{% endif %}
+  {% if approval.status != "pending" %}
+    <div class="banner info"><b>{{ approval.get_status_display }}</b> by {{ approval.decided_by|default:approval.approver }} on {{ approval.decided_at|date:"M j, Y" }}{% if approval.comment %}: “{{ approval.comment }}”{% endif %}</div>
+  {% else %}
+    <form method="post" class="facts" style="display:grid">
+      {% csrf_token %}
+      <div class="field"><label for="by">Your name</label><input id="by" name="by" value="{{ approval.approver }}" required></div>
+      <div class="field wide"><label for="comment">Comment (optional)</label><textarea id="comment" name="comment" rows="3"></textarea></div>
+      <div class="row">
+        <button class="btn primary" name="decision" value="approved">Approve</button>
+        <button class="btn danger" name="decision" value="declined">Decline</button>
+      </div>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

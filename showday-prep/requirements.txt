@@ -1,0 +1,11 @@
+# requirements.txt — the Python packages this project needs.
+# Install them all with:  pip install -r requirements.txt
+
+Django>=5.2,<5.3          # the web framework everything is built on
+dj-database-url>=2.2      # reads the database address from one setting (DATABASE_URL)
+whitenoise>=6.7           # serves the CSS/JS files when the site is online
+gunicorn>=22              # the web server Render uses to run Django online
+psycopg[binary]>=3.2      # lets Django talk to a Postgres database (used online)
+python-dotenv>=1.0        # loads secret settings from a local .env file
+anthropic>=0.40           # the official Claude API package, for AI meeting summaries
+django-storages[s3]>=1.14 # optional: stores uploaded files in Cloudflare R2 or Amazon S3

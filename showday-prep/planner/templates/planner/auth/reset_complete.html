@@ -1,0 +1,7 @@
+{% extends "planner/auth/base.html" %}
+{% block title %}Password saved · MagicShow{% endblock %}
+{% block content %}
+<h2>Your new password is saved</h2>
+<p class="muted">Log in with your email and the new password.</p>
+<a class="btn primary" href="{% url 'login' %}" style="justify-content:center">Log in</a>
+{% endblock %}

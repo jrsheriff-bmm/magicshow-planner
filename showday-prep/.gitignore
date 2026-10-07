@@ -1,0 +1,22 @@
+# .gitignore — files Git should never upload to GitHub.
+
+# Secrets and local settings
+.env
+
+# Your local database and uploaded files (these stay on your computer)
+db.sqlite3
+media/
+
+# Python leftovers
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Collected static files (built fresh on the server)
+staticfiles/
+
+# Editor and system files
+.vscode/
+.idea/
+.DS_Store

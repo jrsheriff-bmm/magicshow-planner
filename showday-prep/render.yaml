@@ -1,0 +1,37 @@
+# render.yaml — a "Blueprint" that tells Render exactly what to create:
+# one web service (the site) and one Postgres database.
+# In Render: New → Blueprint → pick this GitHub repo. See docs/03-put-it-online.md.
+
+databases:
+  - name: showday-db
+    plan: basic-256mb        # the smallest paid Postgres. Check render.com/pricing for current plans.
+    databaseName: showday
+    user: showday
+
+services:
+  - type: web
+    name: showday-prep
+    runtime: python
+    plan: starter            # paid plans don't go to sleep. Check render.com/pricing.
+    buildCommand: bash build.sh   # "bash" so it runs even if Windows drops the file's run permission
+    startCommand: gunicorn showday.wsgi:application
+    healthCheckPath: /healthz
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: showday-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true  # Render makes a strong random key for you
+      - key: DEBUG
+        value: "False"
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: ALLOWED_HOSTS
+        value: "app.yourdomain.com"   # change to your real address after buying the domain
+      - key: ANTHROPIC_API_KEY
+        sync: false          # you type this one into Render's dashboard; it never goes in GitHub
+      - key: CLAUDE_MODEL
+        value: "claude-sonnet-5"
+      - key: USE_S3
+        value: "False"       # switch to True once Cloudflare R2 is set up (see the guide)

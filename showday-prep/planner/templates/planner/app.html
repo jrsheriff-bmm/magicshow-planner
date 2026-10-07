@@ -1,0 +1,54 @@
+{% comment %}
+planner/templates/planner/app.html — the page that holds the planner screens.
+
+This page is mostly empty on purpose. The JavaScript files at the bottom draw every
+screen, then load the data from /api/bootstrap/. To change how a screen looks or
+works, edit the files in planner/static/planner/js/ (see docs/02-how-it-works.md).
+{% endcomment %}
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>MagicShow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <link rel="stylesheet" href="{% static 'planner/css/app.css' %}">
+</head>
+<body>
+  <div id="app" class="shell">
+    <aside class="rail"><div class="brand"><b>MagicShow</b><span>{{ org.name|default:"Blackmagic Media" }}</span></div><p class="muted">Loading your events…</p></aside>
+    <main class="main">
+      {% if not org %}
+        <div class="banner">Your login isn't connected to an organization yet. Ask an admin to run: <code>python manage.py setup_org "Blackmagic Media" --user {{ request.user.username }}</code></div>
+      {% else %}
+        <div class="empty"><h2>Loading events</h2><p>Your saved events appear here in a moment.</p></div>
+      {% endif %}
+    </main>
+  </div>
+  {# Hidden log-out form: Django requires log-out to be a POST with a security token. #}
+  <form id="logoutForm" method="post" action="{% url 'logout' %}" hidden>{% csrf_token %}</form>
+
+  {# PDF maker (used for "Download PDF"). #}
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  {# The planner screens, loaded in this order. Each file explains itself at the top. #}
+  <script src="{% static 'planner/js/helpers.js' %}"></script>
+  <script src="{% static 'planner/js/templates.js' %}"></script>
+  <script src="{% static 'planner/js/store-django.js' %}"></script>  {# v3: how screens talk to the server #}
+  <script src="{% static 'planner/js/core.js' %}"></script>
+  <script src="{% static 'planner/js/views.js' %}"></script>
+  <script src="{% static 'planner/js/actions.js' %}"></script>
+  {# v3 features: each file adds its own tab, pop-ups and buttons #}
+  <script src="{% static 'planner/js/budget.js' %}"></script>
+  <script src="{% static 'planner/js/approvals.js' %}"></script>
+  <script src="{% static 'planner/js/reminders.js' %}"></script>
+  <script src="{% static 'planner/js/wrapup.js' %}"></script>
+  <script src="{% static 'planner/js/reports.js' %}"></script>
+  <script src="{% static 'planner/js/library.js' %}"></script>
+  <script src="{% static 'planner/js/hours.js' %}"></script>  {# v4: Hours page and client workspaces #}
+  <script src="{% static 'planner/js/exports.js' %}"></script>  {# final: budget to Excel/CSV, layout in PDFs #}
+  <script src="{% static 'planner/js/account.js' %}"></script>  {# final: the Account pop-up and support access #}
+  <script src="{% static 'planner/js/boot.js' %}"></script>  {# must be last: starts the app #}
+</body>
+</html>
