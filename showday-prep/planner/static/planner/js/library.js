@@ -31,8 +31,10 @@ function templateFromEvent(ev, keepNames){
   d.compliance.forEach(c => { fresh(c); c.status = 'needed'; c.expires = ''; c.files = []; if(!keepNames) c.owner = ''; delete c.ownerId; });
   d.equipment.forEach(e => { fresh(e); e.status = 'needed'; if(!keepNames) e.owner = ''; delete e.ownerId; });
   d.budget.forEach(b => { fresh(b); b.actual = ''; b.paid = ''; b.due = ''; b.files = []; b.status = b.kind === 'income' ? 'expected' : 'estimated'; if(!keepNames){ b.payee = ''; } delete b.payeeId; });
-  d.contacts = keepNames ? d.contacts.map(c => Object.assign(fresh(c), {personId:c.personId||''})) : d.contacts.filter(c => c.role).map(c => ({id:uid(), role:c.role, name:'', org:'', phone:'', email:'', audiences:c.audiences||['Internal'], showPhone:false, invoiceUrl:'', remind:true, team:!!c.team}));
-  d.layout.pins = []; d.layout.image = ''; d.layout.pieces.forEach(fresh);
+  d.contacts = d.contacts.filter(c => !c.roster);   // [beta] group lists (vendors, artists) belong to one show
+  d.contacts = keepNames ? d.contacts.map(c => Object.assign(fresh(c), {personId:c.personId||'', sentAt:null})) : d.contacts.filter(c => c.role).map(c => ({id:uid(), role:c.role, name:'', org:'', phone:'', email:'', audiences:c.audiences||['Internal'], showPhone:false, invoiceUrl:'', remind:true, team:!!c.team}));
+  d.layout.pins = []; d.layout.image = ''; d.layout.pieces.forEach(p => { fresh(p); p.contactId = ''; });
+  (d.customTabs||[]).forEach(fresh);   // [beta] groups, notes tabs, hidden tabs and "attendance not counted" carry over as they are
   return d;
 }
 /* Template data → a new event (fresh ids, so two events never share a line). */
@@ -41,6 +43,7 @@ function eventFromTemplateData(data){
   ['milestones','setup','compliance','equipment','budget','contacts'].forEach(k => (d[k]||[]).forEach(x => x.id = uid()));
   ((d.program && d.program.items) || []).forEach(x => x.id = uid());
   if(d.layout){ (d.layout.pieces||[]).forEach(x => x.id = uid()); d.layout.pins = []; }
+  (d.customTabs||[]).forEach(x => x.id = uid());
   return d;
 }
 function builtinData(key){ const t = TEMPLATES.find(x => x.key === key); return t ? buildTemplate(t) : null; }

@@ -49,6 +49,9 @@ def run_checks(event, today=None):
                     f"“{m.title}” was due {fmt_date(due, True)}{' (hard deadline)' if m.hard else ''} and isn't marked done.")
             elif m.hard and (due - today).days <= 7:
                 add("warning", f"Hard deadline “{m.title}” is due in {(due - today).days} days.")
+            for st in m.checklist or []:   # [beta] steps with their own due day
+                if st.get("offset") is not None and not st.get("done") and due_date(event, st["offset"]) < today:
+                    add("warning", f"Step “{st.get('text')}” of “{m.title}” was due {fmt_date(due_date(event, st['offset']), True)}.")
 
     for c in event.compliance_items.all():
         due = due_date(event, c.offset)

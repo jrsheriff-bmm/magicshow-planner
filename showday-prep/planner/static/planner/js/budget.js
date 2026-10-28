@@ -4,11 +4,17 @@
    Each budget line is {kind:'cost'|'income', cat, item, payee, est, actual,
    paid, due, status, files}. "Projected" means the actual amount if one is
    entered, otherwise the estimate. Everything else is calculated from that.
+   [beta] Income lines can record "fees kept" by a ticket platform (Eventbrite and
+   the like); projected income is what actually reaches you. Vendor fees can be
+   tracked per vendor on the group lists (contact.fee, contact.feePaid); when any
+   are, they replace hand-typed "Vendor fees" income lines.
    ========================================================================== */
 
 /* All the totals the Budget tab, checks, reports and exports use. */
 function budgetSummary(ev){
-  const proj = b => hasAmt(b.actual) ? amt(b.actual) : amt(b.est);
+  const proj = b => (hasAmt(b.actual) ? amt(b.actual) : amt(b.est)) - (b.kind === 'income' ? amt(b.fees) : 0);
+  const roster = ev.contacts.filter(c => c.roster && hasAmt(c.fee));
+  const vendorFees = roster.reduce((a,c) => a + amt(c.fee), 0), vendorPaid = roster.filter(c => c.feePaid).reduce((a,c) => a + amt(c.fee), 0);
   const costs = ev.budget.filter(b => b.kind === 'cost'), income = ev.budget.filter(b => b.kind === 'income');
   const cap = amt(ev.budgetTotal);
   const projCost = costs.reduce((a,b) => a + proj(b), 0);
@@ -18,12 +24,12 @@ function budgetSummary(ev){
   const owed = costs.filter(b => b.status === 'committed' || b.status === 'invoiced').reduce((a,b) => a + Math.max(0, proj(b) - amt(b.paid)), 0);
   // Ticket income: use real "Tickets" lines if they have amounts; otherwise project target × advance price.
   const ticketLines = income.filter(b => b.cat === 'Tickets' && (hasAmt(b.est) || hasAmt(b.actual)));
-  const ticketsProjected = Number(ev.target) > 0 && Number(ev.priceAdv) > 0 ? Number(ev.target) * Number(ev.priceAdv) : 0;
+  const ticketsProjected = !ev.noHeadcount && Number(ev.target) > 0 && Number(ev.priceAdv) > 0 ? Number(ev.target) * Number(ev.priceAdv) : 0;
   const useTicketProjection = !ticketLines.length && ticketsProjected > 0;
-  const otherIncome = income.filter(b => b.cat !== 'Tickets').reduce((a,b) => a + proj(b), 0);
+  const otherIncome = income.filter(b => b.cat !== 'Tickets' && !(roster.length && b.cat === 'Vendor fees')).reduce((a,b) => a + proj(b), 0) + vendorFees;
   const ticketIncome = useTicketProjection ? ticketsProjected : ticketLines.reduce((a,b) => a + proj(b), 0);
   const projIncome = otherIncome + ticketIncome;
-  const received = income.filter(b => b.status === 'received').reduce((a,b) => a + amt(hasAmt(b.actual) ? b.actual : b.est), 0);
+  const received = income.filter(b => b.status === 'received' && !(roster.length && b.cat === 'Vendor fees')).reduce((a,b) => a + proj(b), 0) + vendorPaid;
   const byCat = COST_CATS.concat([...new Set(costs.map(b => b.cat))].filter(c => !COST_CATS.includes(c))).map(cat => {
     const ls = costs.filter(b => b.cat === cat);
     const both = ls.filter(b => hasAmt(b.est) && hasAmt(b.actual));
@@ -32,7 +38,7 @@ function budgetSummary(ev){
   const overCats = byCat.filter(c => c.actual > c.est && c.est > 0);
   const price = Number(ev.priceAdv);
   const breakEven = price > 0 && projCost > 0 ? Math.max(0, Math.ceil((projCost - otherIncome) / price)) : null;
-  return {cap, projCost, estCost, paid, committed, owed, projIncome, received, otherIncome, ticketIncome, ticketsProjected, useTicketProjection,
+  return {cap, projCost, estCost, paid, committed, owed, projIncome, received, otherIncome, ticketIncome, ticketsProjected, useTicketProjection, vendorFees, vendorPaid, vendorCount:roster.length,
     net: projIncome - projCost, left: cap - projCost, byCat, overCats, breakEven};
 }
 
@@ -105,14 +111,16 @@ function budgetHTML(ev){
 
   // Income table
   const inc = ev.budget.filter(b => b.kind === 'income');
-  h += '<div class="panel"><div class="panel-head"><div><h2>Income</h2><p class="hint">Tickets, sponsors, grants, vendor fees. If you don’t enter ticket amounts, the app projects target × advance price'+(B.ticketsProjected?' ('+ev.target+' × '+usd(ev.priceAdv)+' = '+usd(B.ticketsProjected)+')':'')+'.</p></div><button class="btn primary small" data-act="addBud" data-kind="income"'+ro()+'>+ Add income</button></div>';
-  h += '<div class="tablewrap"><table style="min-width:910px"><thead><tr><th></th><th>Source</th><th style="width:30%">Item</th><th>Expected</th><th>Received</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody data-reorder="budget">';
-  if(B.useTicketProjection) h += '<tr><td></td><td class="hint" style="padding-left:10px">Tickets</td><td class="hint">Projected: '+ev.target+' tickets × '+usd(ev.priceAdv)+'</td><td class="mono" style="padding-left:10px">'+usd(B.ticketsProjected)+'</td><td></td><td><span class="pill">Automatic</span></td><td class="hint">Add a Tickets line to override</td><td></td></tr>';
+  h += '<div class="panel"><div class="panel-head"><div><h2>Income</h2><p class="hint">Tickets, sponsors, grants, vendor fees. Put what a ticket platform kept (Eventbrite’s fees, say) under <b>Fees kept</b>; income counts what reaches you. If you don’t enter ticket amounts, the app projects target × advance price'+(B.ticketsProjected?' ('+ev.target+' × '+usd(ev.priceAdv)+' = '+usd(B.ticketsProjected)+')':'')+'.</p></div><button class="btn primary small" data-act="addBud" data-kind="income"'+ro()+'>+ Add income</button></div>';
+  h += '<div class="tablewrap"><table style="min-width:1030px"><thead><tr><th></th><th>Source</th><th style="width:28%">Item</th><th>Expected</th><th>Received</th><th>Fees kept '+help('fees')+'</th><th>Status</th><th>Notes</th><th></th></tr></thead><tbody data-reorder="budget">';
+  if(B.useTicketProjection) h += '<tr><td></td><td class="hint" style="padding-left:10px">Tickets</td><td class="hint">Projected: '+ev.target+' tickets × '+usd(ev.priceAdv)+'</td><td class="mono" style="padding-left:10px">'+usd(B.ticketsProjected)+'</td><td></td><td></td><td><span class="pill">Automatic</span></td><td class="hint">Add a Tickets line to override</td><td></td></tr>';
   inc.forEach(b => {
-    h += '<tr data-row="'+b.id+'" class="'+(b.status==='received'?'done':'')+'">'+gripCell('budget',b.id)+'<td>'+sel('budget',b.id,'cat',b.cat,INCOME_CATS.includes(b.cat)?INCOME_CATS:INCOME_CATS.concat([b.cat]))+'</td><td>'+inp('budget',b.id,'item',b.item,'',' class="wide" placeholder="What is it?"')+'</td><td>'+moneyIn(b,'est')+'</td><td>'+moneyIn(b,'actual')+'</td><td>'+sel('budget',b.id,'status',b.status,INCOME_STATUS,'status '+(b.status==='received'?'approved':b.status==='confirmed'?'submitted':'needed'))+'</td><td>'+inp('budget',b.id,'notes',b.notes)+'</td><td><button class="iconbtn del" data-act="del" data-list="budget" data-id="'+b.id+'" aria-label="Delete line"'+ro()+'>✕</button></td></tr>';
+    h += '<tr data-row="'+b.id+'" class="'+(b.status==='received'?'done':'')+'">'+gripCell('budget',b.id)+'<td>'+sel('budget',b.id,'cat',b.cat,INCOME_CATS.includes(b.cat)?INCOME_CATS:INCOME_CATS.concat([b.cat]))+'</td><td>'+inp('budget',b.id,'item',b.item,'',' class="wide" placeholder="What is it?"')+'</td><td>'+moneyIn(b,'est')+'</td><td>'+moneyIn(b,'actual')+'</td><td>'+moneyIn(b,'fees')+'</td><td>'+sel('budget',b.id,'status',b.status,INCOME_STATUS,'status '+(b.status==='received'?'approved':b.status==='confirmed'?'submitted':'needed'))+'</td><td>'+inp('budget',b.id,'notes',b.notes)+'</td><td><button class="iconbtn del" data-act="del" data-list="budget" data-id="'+b.id+'" aria-label="Delete line"'+ro()+'>✕</button></td></tr>';
   });
-  if(!inc.length && !B.useTicketProjection) h += '<tr><td colspan="8" class="muted" style="padding:16px">No income yet.</td></tr>';
+  if(!inc.length && !B.useTicketProjection) h += '<tr><td colspan="9" class="muted" style="padding:16px">No income yet.</td></tr>';
+  if(B.vendorCount) h += '<tr><td></td><td class="hint" style="padding-left:10px">Vendor fees</td><td class="hint">From the group lists ('+B.vendorCount+' vendor'+(B.vendorCount>1?'s':'')+')</td><td class="mono" style="padding-left:10px">'+usd(B.vendorFees)+'</td><td class="mono" style="padding-left:10px">'+usd(B.vendorPaid)+'</td><td></td><td><span class="pill">Automatic</span></td><td class="hint">See Vendor fees below</td><td></td></tr>';
   h += '</tbody></table></div></div>';
+  h += vendorFeesHTML(ev, B);
 
   // Invoice repository
   const files = ev.budget.flatMap(b => (b.files||[]).map(f => ({f, b})));
@@ -145,3 +153,13 @@ document.addEventListener('change', async e => {
   const f = await uploadFile(el.files && el.files[0]);
   if(f){ b.files.push(f); if(b.status === 'estimated' || b.status === 'committed') b.status = 'invoiced'; touch(ev); toast('Attached '+f.name+'.'); }
 });
+
+/* [beta] Vendor fees: one row per person on a group list who owes a fee. Tick Paid as money comes in. */
+function vendorFeesHTML(ev, B){
+  const list = ev.contacts.filter(c => c.roster);
+  let h = '<div class="panel"><div class="panel-head"><div><h2>Vendor fees</h2><p class="hint">What each vendor on a group list owes, and whether it’s paid. Fees here count as income automatically, so there’s no need for a separate “Vendor fees” income line.</p></div>'+(list.length?'<div class="row"><span class="pill">'+usd(B.vendorPaid)+' of '+usd(B.vendorFees)+' paid</span></div>':'')+'</div>';
+  if(!list.length) return h + '<p class="muted">No group lists yet. On the Share pages tab, use <b>Import a list</b> to bring in vendors from Jotform or a spreadsheet.</p></div>';
+  h += '<div class="tablewrap"><table style="min-width:760px"><thead><tr><th>Vendor</th><th>Group</th><th>Booth / type</th><th>Fee</th><th>Paid</th></tr></thead><tbody>';
+  list.forEach(c => { h += '<tr class="'+(c.feePaid?'done':'')+'"><td style="padding-left:10px">'+esc(c.name||c.org||'Unnamed')+'</td><td>'+esc(audLabel((c.audiences||[]).filter(a => a !== 'Internal'), ev))+'</td><td>'+inp('contacts',c.id,'booth',c.booth)+'</td><td><div class="row" style="gap:2px;flex-wrap:nowrap"><span class="hint">$</span>'+inp('contacts',c.id,'fee',c.fee,'number',' min="0" step="0.01" style="width:96px"')+'</div></td><td><label class="toggle"><input type="checkbox" data-edit="contacts|'+c.id+'|feePaid"'+(c.feePaid?' checked':'')+ro()+'> Paid</label></td></tr>'; });
+  return h + '</tbody></table></div></div>';
+}

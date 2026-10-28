@@ -18,6 +18,7 @@ a.btn.primary{color:var(--accent-ink)}
   --good:#1E7F55; --good-soft:#E1F3EA; --warn:#A45F00; --warn-soft:#FBEFD9; --crit:#C0342A; --crit-soft:#FBE3E0;
   --t1:#5A3BC2; --t2:#0F7C8C; --t3:#B4531A; --t4:#8A2F6E; --t5:#3F6B1F;
   --floor:#FAFAFC; --grid:#E6E3EE;
+  --g0:#2a78d6; --g1:#eb6834; --g2:#1baf7a; --g3:#eda100; --g4:#e87ba4; --g5:#008300; --g6:#4a3aa7; --g7:#e34948;
   --shadow:0 1px 2px rgba(28,24,39,.06),0 8px 24px rgba(28,24,39,.07);
   --f-display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
   --f-body:"IBM Plex Sans","Segoe UI",system-ui,-apple-system,sans-serif;
@@ -29,6 +30,7 @@ a.btn.primary{color:var(--accent-ink)}
   --good:#52C993; --good-soft:#163A2A; --warn:#F1B24E; --warn-soft:#3B2C12; --crit:#FF7D72; --crit-soft:#43201D;
   --t1:#A58CFF; --t2:#4CC3D2; --t3:#F2955A; --t4:#E07AC0; --t5:#8FCB63;
   --floor:#191622; --grid:#2A2638;
+  --g0:#3987e5; --g1:#d95926; --g2:#199e70; --g3:#c98500; --g4:#d55181; --g5:#008300; --g6:#9085e9; --g7:#e66767;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark }}
 :root[data-theme="dark"]{
   --bg:#14121B; --surface:#1D1A27; --surface-2:#272336; --line:#363049; --ink:#EEEBF6; --ink-2:#ACA5C2; --ink-3:#8A83A2;
@@ -36,6 +38,7 @@ a.btn.primary{color:var(--accent-ink)}
   --good:#52C993; --good-soft:#163A2A; --warn:#F1B24E; --warn-soft:#3B2C12; --crit:#FF7D72; --crit-soft:#43201D;
   --t1:#A58CFF; --t2:#4CC3D2; --t3:#F2955A; --t4:#E07AC0; --t5:#8FCB63;
   --floor:#191622; --grid:#2A2638;
+  --g0:#3987e5; --g1:#d95926; --g2:#199e70; --g3:#c98500; --g4:#d55181; --g5:#008300; --g6:#9085e9; --g7:#e66767;
   --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 24px rgba(0,0,0,.25); color-scheme:dark }
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14.5px;line-height:1.5}
@@ -388,3 +391,70 @@ tbody.reordering tr.insrow button{display:none}
 }
 .drawer.still{animation:none}
 @media print{ .grip,tr.insrow{display:none} }
+
+/* ==========================================================================
+   [beta] help, steps, groups, lists, series, tabs, team, testing
+   ========================================================================== */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.help{border:1px solid var(--line);background:var(--surface);color:var(--accent);width:18px;height:18px;border-radius:50%;padding:0;font-size:11px;font-weight:700;line-height:16px;display:inline-grid;place-items:center;vertical-align:1px;margin-left:4px;cursor:pointer}
+.help:hover,.help[aria-expanded="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.helppop{position:fixed;z-index:60;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px;display:flex;flex-direction:column;gap:6px;font-size:13.5px}
+.helppop p{margin:0;color:var(--ink-2);line-height:1.45}
+.helppop .btn{align-self:flex-end}
+.guide{display:flex;flex-direction:column;gap:10px}
+.guide-row{display:grid;grid-template-columns:28px 1fr;gap:10px;align-items:start}
+.guide-row .mono{width:24px;height:24px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-size:12px}
+.guide-row p{margin:2px 0 0;font-size:13.5px}
+.gslist{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:6px 16px}
+.gslist li{display:flex;align-items:center;gap:8px;font-size:13.5px;min-height:30px}
+.gslist li.ok{color:var(--ink-3);text-decoration:line-through}
+.gstick{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:inline-grid;place-items:center;font-size:11px;flex:none}
+.gslist li.ok .gstick{background:var(--good);border-color:var(--good);color:#fff}
+.gslist .btn{margin-left:auto}
+/* steps: progress on cards, the drawer and the list */
+.prog{display:flex;align-items:center;gap:10px}
+.prog .bar{flex:1;margin:0}
+.cardprog{display:flex;align-items:center;gap:8px;width:100%;margin-top:6px}
+.cardprog .bar{flex:1;margin:0;height:5px}
+.cardprog .mono{font-size:11px;color:var(--ink-3)}
+.nextstep{display:block;font-size:11.5px;margin-top:3px;text-align:left}
+.nextstep.late,.late{color:var(--crit)}
+.minibar{display:inline-block;width:60px;height:5px;border-radius:3px;background:var(--surface-2);overflow:hidden;vertical-align:middle}
+.minibar i{display:block;height:100%;background:var(--accent)}
+.field .subtask input.stepdate,.subtask input.stepdate{flex:none;width:148px;font-family:var(--f-mono);font-size:12.5px}
+.field .subtask input[type=text]{flex:1;width:auto;min-width:120px}
+.subtask.step.late .stepdate{border-color:var(--crit);color:var(--crit)}
+/* groups, lists, import */
+.panel.inset{background:var(--bg);border-style:dashed}
+.panel.inset h3{margin:0}
+.minilist{display:flex;flex-wrap:wrap;gap:6px}
+.mapgrid{grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.palette button.custom{border-style:dashed}
+.ppl select{min-width:120px}
+/* series and tabs */
+.seriesstrip{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:8px 12px;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+.seriesstrip .spacer{flex:1}
+.seriesrow{gap:8px;align-items:center}
+tr.past td{color:var(--ink-3)}
+.ctbody{min-height:320px;font-family:var(--f-body);line-height:1.5}
+.tabgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:6px 14px}
+/* team */
+.reqrow{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 0;border-top:1px solid var(--line)}
+.reqrow p{margin:4px 0}
+.invrow{align-items:center}
+.assigned{display:flex;flex-direction:column}
+.asgrow{display:grid;grid-template-columns:150px 1fr auto;gap:12px;align-items:center;text-align:left;border:0;border-top:1px solid var(--line);background:transparent;padding:9px 4px;color:var(--ink)}
+.asgrow:hover{background:var(--surface-2)}
+.asgrow .mono{font-size:12.5px}
+@media (max-width:640px){.asgrow{grid-template-columns:1fr}.field .subtask input.stepdate{width:128px}}
+/* testing */
+.ratecard{position:fixed;right:16px;bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:45;width:min(300px,calc(100% - 32px));background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);padding:12px 14px;display:flex;flex-direction:column;gap:8px;font-size:13.5px}
+.ratecard .rate{gap:6px;flex-wrap:nowrap}
+.ratecard .rate .btn{flex:1;justify-content:center;padding:6px 0}
+.usage{display:flex;flex-direction:column;gap:6px}
+.urow{display:grid;grid-template-columns:minmax(120px,1fr) 2fr 44px;gap:10px;align-items:center;font-size:13px}
+.ubar{height:8px;border-radius:4px;background:var(--surface-2);overflow:hidden}
+.ubar i{display:block;height:100%;background:var(--accent);border-radius:4px}
+.urow .mono{text-align:right}
+/* a tick box inside a form field keeps its size (the field rule above makes inputs full width) */
+.field .toggle input[type=checkbox]{width:16px;height:16px;flex:none;padding:0}

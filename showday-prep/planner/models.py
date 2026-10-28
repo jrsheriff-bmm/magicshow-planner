@@ -49,6 +49,12 @@ from django.utils import timezone
 # Choice lists. The first value is what's stored; the second is what people see.
 # ---------------------------------------------------------------------------
 AUDIENCES = ["Internal", "Performers", "Vendors", "Venue", "Security"]
+# [beta] Each event now has its own share-page groups (event.groups). These four are the
+# starting set; their ids are the old names, so everything made before still works.
+DEFAULT_GROUPS = [{"id": "Performers", "name": "Performers", "vendor": False},
+                  {"id": "Vendors", "name": "Vendors", "vendor": True},
+                  {"id": "Venue", "name": "Venue", "vendor": False},
+                  {"id": "Security", "name": "Security", "vendor": False}]
 MILESTONE_STATUS = [("todo", "Not started"), ("doing", "In progress"), ("done", "Done")]
 COMPLIANCE_STATUS = [("needed", "Needed"), ("submitted", "Submitted"), ("approved", "Approved")]
 EQUIPMENT_STATUS = [("needed", "Needed"), ("secured", "Secured"), ("packed", "Packed"), ("loaded", "Loaded in"), ("returned", "Returned")]
@@ -95,6 +101,10 @@ class Organization(models.Model):
     support_access = models.BooleanField(
         "Blackmagic team can open this workspace", default=False,
         help_text="When ticked, every login with Staff status can open this workspace and help build its events.")
+    # [beta] Organizations people can find and ask to join
+    personal = models.BooleanField("someone's personal workspace", default=False)
+    discoverable = models.BooleanField("people can find it and ask to join", default=True)
+    city = models.CharField(max_length=100, blank=True, help_text="Shown in search so two groups with the same name can be told apart.")
 
     def __str__(self):
         return self.name
@@ -124,6 +134,7 @@ class Person(models.Model):
     email = models.EmailField(blank=True)
     invoice_url = models.URLField("invoice / quote link", max_length=500, blank=True)
     notes = models.TextField(blank=True)
+    tags = models.JSONField(default=list, blank=True)   # [beta] e.g. ["Staff", "Vendor"]
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
@@ -158,6 +169,11 @@ class Event(models.Model):
     budget_total = models.DecimalField("budget ($)", max_digits=12, decimal_places=2, null=True, blank=True)  # [v3]
     wrapup = models.JSONField(default=dict, blank=True)  # [v3] attendance, rating, lessons, vendor ratings
     # Layout: room size for "Build a layout", and the uploaded floor plan image.
+    # [beta]
+    groups = models.JSONField(default=list, blank=True)        # share-page groups: [{"id", "name", "vendor"}]
+    no_headcount = models.BooleanField("attendance isn't counted (open entry)", default=False)
+    custom_tabs = models.JSONField(default=list, blank=True)   # [{"id", "name", "body"}]
+    hidden_tabs = models.JSONField(default=list, blank=True)   # tab keys this event hides
     room_width = models.FloatField(default=60)
     room_depth = models.FloatField(default=80)
     floor_plan = models.ForeignKey("EventFile", null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
@@ -191,7 +207,7 @@ class Milestone(EventChild):
     owner = models.CharField(max_length=200, blank=True)
     hard = models.BooleanField("hard deadline", default=False)
     status = models.CharField(max_length=20, choices=MILESTONE_STATUS, default="todo")
-    checklist = models.JSONField(default=list, blank=True)   # [{"id":..., "text":..., "done": true/false}]
+    checklist = models.JSONField(default=list, blank=True)   # [{"id", "text", "done", "offset"}]: offset = the step's own due day [beta], or null
     owner_ref = models.CharField("owner's contact id", max_length=40, blank=True)  # [v3] who gets the reminder
     done_at = models.DateField("completed on", null=True, blank=True)             # [v3] for "ran late" reports
 
@@ -240,6 +256,13 @@ class EventContact(EventChild):
     invoice_url = models.CharField("invoice / quote link", max_length=500, blank=True)
     remind = models.BooleanField("email reminders", default=True)                     # [v3]
     team = models.BooleanField("planning team (payments + Monday summary)", default=False)  # [v3]
+    # [beta] Group lists: vendors, artists and others imported from a spreadsheet. They get their
+    # group's itinerary but aren't part of the planning team.
+    roster = models.BooleanField("on a group list (not staff)", default=False)
+    booth = models.CharField("booth / type / notes", max_length=300, blank=True)
+    fee = models.DecimalField("vendor fee ($)", max_digits=10, decimal_places=2, null=True, blank=True)
+    fee_paid = models.BooleanField("fee paid", default=False)
+    sent_at = models.DateTimeField("itinerary last emailed", null=True, blank=True)
 
     def __str__(self):
         return self.name or self.role
@@ -290,6 +313,7 @@ class BudgetLine(EventChild):
     due = models.DateField("payment due", null=True, blank=True)
     status = models.CharField(max_length=20, default="estimated")  # COST_STATUS or INCOME_STATUS
     notes = models.TextField(blank=True)
+    fees = models.DecimalField("fees kept by the platform", max_digits=12, decimal_places=2, null=True, blank=True)  # [beta] income only
 
     def __str__(self):
         return self.item or self.cat
@@ -305,6 +329,8 @@ class LayoutPiece(EventChild):
     w = models.FloatField(default=6)
     h = models.FloatField(default=4)
     rot = models.PositiveIntegerField(default=0)
+    group = models.CharField(max_length=40, blank=True)        # [beta] which share-page group (colors the booth)
+    contact_id = models.CharField(max_length=40, blank=True)   # [beta] the vendor in this booth (an EventContact id)
 
 
 class LayoutPin(EventChild):
@@ -368,6 +394,7 @@ class Note(models.Model):
     where = models.CharField(max_length=300, blank=True)
     event_id_ref = models.CharField("event id", max_length=40, blank=True)
     done = models.BooleanField("handled", default=False)
+    shared = models.BooleanField("sent to the MagicShow team", default=False)   # [beta] beta feedback
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -476,3 +503,71 @@ class TimeEntry(models.Model):
 
     def __str__(self):
         return f"{self.date} · {self.hours} h · {self.cat}"
+
+
+# ---------------------------------------------------------------------------
+# New in the beta update
+# ---------------------------------------------------------------------------
+
+
+class JoinRequest(models.Model):
+    """Someone asked to join an organization. Its owners approve or decline."""
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="join_requests")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="join_requests")
+    message = models.CharField(max_length=500, blank=True)
+    status = models.CharField(max_length=20, choices=[("pending", "Waiting"), ("approved", "Approved"), ("declined", "Declined")], default="pending")
+    created_at = models.DateTimeField(auto_now_add=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.user} → {self.org} ({self.status})"
+
+
+def invite_token():
+    return secrets.token_urlsafe(18)
+
+
+class OrgInvite(models.Model):
+    """A link an owner shares: whoever opens it (and logs in or signs up) joins the organization."""
+    token = models.CharField(max_length=64, unique=True, default=invite_token)
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name="invites")
+    role = models.CharField(max_length=20, choices=[("member", "Member"), ("owner", "Owner")], default="member")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    revoked = models.BooleanField(default=False)
+    uses = models.PositiveIntegerField(default=0)
+
+    def usable(self):
+        return not self.revoked and self.expires_at > timezone.now()
+
+    def __str__(self):
+        return f"Invite to {self.org}"
+
+
+class UsageEvent(models.Model):
+    """
+    [beta] One thing someone did in the app, for the Testing report: which button, which
+    screen, a pop-up started or finished, an error, a "how easy was that" rating.
+    Only NAMES of buttons and screens are stored, never what anyone typed.
+    """
+    KINDS = [("action", "Pressed a button"), ("view", "Opened a screen"), ("flow", "Pop-up started/finished"),
+             ("error", "Error"), ("rating", "Ease rating")]
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL)
+    org = models.ForeignKey(Organization, null=True, blank=True, on_delete=models.SET_NULL)
+    session = models.CharField(max_length=40, blank=True)
+    kind = models.CharField(max_length=20, choices=KINDS)
+    name = models.CharField(max_length=120)
+    screen = models.CharField(max_length=120, blank=True)
+    detail = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.kind}: {self.name}"

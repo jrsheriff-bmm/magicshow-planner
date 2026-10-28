@@ -1,4 +1,5 @@
 {% extends "planner/public_base.html" %}
+{% load planner_extras %}
 {% comment %}[v3] /t/<token>/ — one person's "My tasks" page for one event. They can mark things done here.{% endcomment %}
 {% block title %}{{ contact.name|default:contact.org_name }} · {{ event.name }}{% endblock %}
 {% block content %}
@@ -17,6 +18,14 @@
       {% if m.status == "done" %}<span class="pill good">Done</span>
       {% else %}<form method="post">{% csrf_token %}<input type="hidden" name="kind" value="m"><input type="hidden" name="id" value="{{ m.id }}"><button class="btn small primary">Mark done</button></form>{% endif %}
     </div>
+    {% for st in m.checklist %}{# [beta] the deadline's checklist steps #}
+    <div class="taskrow" style="padding-left:18px">
+      <span class="mono hint">{% if st.offset is not None %}{{ st.offset|stepdate:event }}{% endif %}</span>
+      <span class="hint">Step: {{ st.text }}</span>
+      {% if st.done or m.status == "done" %}<span class="pill good">Done</span>
+      {% else %}<form method="post">{% csrf_token %}<input type="hidden" name="kind" value="s"><input type="hidden" name="id" value="{{ m.id }}.{{ st.id }}"><button class="btn small">Step done</button></form>{% endif %}
+    </div>
+    {% endfor %}
   {% empty %}<p class="muted">No deadlines are assigned to you.</p>{% endfor %}
 </div>
 

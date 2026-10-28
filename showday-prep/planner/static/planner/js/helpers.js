@@ -8,6 +8,18 @@
    ========================================================================== */
 "use strict";
 const AUD = ['Internal','Performers','Vendors','Venue','Security'];
+/* [beta] Each event has its own share-page groups (ev.groups). The starting four keep their old
+   names as ids, so events made before still work. "Internal" (the planning team) is always there. */
+const DEFAULT_GROUPS = [{id:'Performers',name:'Performers',vendor:false},{id:'Vendors',name:'Vendors',vendor:true},{id:'Venue',name:'Venue',vendor:false},{id:'Security',name:'Security',vendor:false}];
+const FESTIVAL_GROUPS = [{id:'Performers',name:'Performers',vendor:false},{id:'g-food',name:'Food vendors',vendor:true},{id:'g-retail',name:'Retail',vendor:true},{id:'g-info',name:'Info booths',vendor:true},{id:'g-artisan',name:'Artisans',vendor:true},{id:'Venue',name:'Venue',vendor:false},{id:'Security',name:'Security',vendor:false}];
+function groupsOf(ev){ return ev && Array.isArray(ev.groups) && ev.groups.length ? ev.groups : DEFAULT_GROUPS; }
+function audOf(ev){ return [{id:'Internal',name:'Internal'}].concat(groupsOf(ev)); }
+function gname(ev, id){ if(id === 'Internal') return 'Internal'; const g = groupsOf(ev).find(x => x.id === id); return g ? g.name : id; }
+function gindex(ev, id){ return groupsOf(ev).findIndex(x => x.id === id); }
+/* One color per group, in order (checked for color-blind separation). CSS uses the --gN variables,
+   with lighter steps in dark mode; PDFs use GROUP_RGB. Booths also carry their name and a legend,
+   so color is never the only way to tell groups apart. */
+const GROUP_RGB = [[42,120,214],[235,104,52],[27,175,122],[237,161,0],[232,123,164],[0,131,0],[74,58,167],[227,73,72]];
 const MS_STATUS = [['todo','Not started'],['doing','In progress'],['done','Done']];
 const CP_STATUS = [['needed','Needed'],['submitted','Submitted'],['approved','Approved']];
 const EQ_STATUS = [['needed','Needed'],['secured','Secured'],['packed','Packed'],['loaded','Loaded in'],['returned','Returned']];

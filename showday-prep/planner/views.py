@@ -48,18 +48,23 @@ def share_page(request, token):
     audience = link.audience
     if audience == "Deadlines":
         raise Http404("This link is a calendar feed. Add it to a calendar app instead.")
+    # [beta] Groups belong to each event; the link stores the group's id, the page shows its name.
+    from .serializers import group_name
+    group = next((g for g in (event.groups or []) if g.get("id") == audience), None)
+    is_vendor = audience == "Vendors" if group is None else bool(group.get("vendor"))
     rows = [{"time": fmt12(r["s"]) + (f" – {fmt12(r['e'])}" if r["kind"] == "setup" else ""),
              "title": (f"{r['who']} · " if r["who"] else "") + r["title"],
              "detail": r["track"] if r["kind"] == "setup" else f"{r['e'] - r['s']} min"}
             for r in day_schedule(event, audience)]
-    people = [c for c in event.contacts.all() if audience == "Internal" or audience in (c.audiences or [])]
+    # Group lists (vendors imported from a spreadsheet) receive this page; they aren't listed as contacts on it.
+    people = [c for c in event.contacts.all() if not c.roster and (audience == "Internal" or audience in (c.audiences or []))]
     contacts = [{"name": c.name or "Name to confirm", "detail": " · ".join(x for x in [c.role, c.org_name] if x),
                  "phone": c.phone if (audience == "Internal" or c.show_phone) else "",
                  "invoice": c.invoice_url if c.invoice_url.startswith("https://") and audience != "Internal" else ""}
                 for c in people]
-    bring = [q for q in event.equipment.all() if q.source == "Vendor brings"] if audience == "Vendors" else []
+    bring = [q for q in event.equipment.all() if q.source == "Vendor brings"] if is_vendor else []
     paperwork = []
-    if audience in ("Vendors", "Venue", "Internal"):
+    if is_vendor or audience in ("Venue", "Internal"):
         names = [n for c in people for n in (c.name.lower(), c.org_name.lower()) if n]
         for item in event.compliance_items.all():
             owner = item.owner.lower()
@@ -67,7 +72,7 @@ def share_page(request, token):
                 paperwork.append({"date": fmt_date(due_date(event, item.offset), True), "item": item.item,
                                   "detail": f"{item.owner} · {item.get_status_display()}"})
     return render(request, "planner/share.html", {
-        "event": event, "audience": audience, "date_long": fmt_long(event.date), "rows": rows,
+        "event": event, "audience": group_name(event, audience), "date_long": fmt_long(event.date), "rows": rows,
         "contacts": contacts, "bring": bring, "paperwork": paperwork, "token": token,
         "rules": event.house_rules if event.kind == "venue" else [],
     })
@@ -101,7 +106,7 @@ def healthz(request):
 # [v3] Pages opened from emails
 # ---------------------------------------------------------------------------
 
-DONE_WORDS = {"m": "Done", "c": "Submitted", "b": "Paid"}
+DONE_WORDS = {"m": "Done", "c": "Submitted", "b": "Paid", "s": "Done"}
 
 
 def task_page(request, token):
@@ -114,6 +119,7 @@ def task_page(request, token):
         kind, item_id = request.POST.get("kind"), request.POST.get("id", "")
         tasks = reminders.person_tasks(event, contact)
         allowed = {("m", m.id) for m, _ in tasks["deadlines"]} | {("c", p.id) for p, _ in tasks["paperwork"]}
+        allowed |= {("s", f"{m.id}.{st.get('id')}") for m, _ in tasks["deadlines"] for st in (m.checklist or [])}   # [beta] steps
         if (kind, item_id) in allowed:
             item = reminders.find_item(event, kind, item_id)
             if item and reminders.mark_done(kind, item):

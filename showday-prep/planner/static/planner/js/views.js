@@ -111,7 +111,10 @@ function railHTML(){
   h += '<button class="navbtn" data-act="contacts" aria-current="'+(S.view==='contacts')+'">Contacts <span class="count">'+S.people.length+'</span></button>';
   h += '<button class="navbtn" data-act="reports" aria-current="'+(S.view==='reports')+'">Reports</button>';
   h += '<button class="navbtn" data-act="library" aria-current="'+(S.view==='library')+'">Templates <span class="count">'+S.templates.length+'</span></button>';
-  h += '<button class="navbtn" data-act="hours" aria-current="'+(S.view==='hours')+'">Hours</button></div>';
+  h += '<button class="navbtn" data-act="hours" aria-current="'+(S.view==='hours')+'">Hours</button>';
+  if(S.user) h += '<button class="navbtn" data-act="team" aria-current="'+(S.view==='team')+'">Team'+(S.pendingRequests?' <span class="count warn" title="People asking to join">'+S.pendingRequests+'</span>':'')+'</button>';
+  if(S.user && S.user.team) h += '<button class="navbtn" data-act="testing" aria-current="'+(S.view==='testing')+'">Testing report</button>';
+  h += '<button class="navbtn" data-act="helpGuide">Help</button></div>';
   h += workspaceHTML();
   h += '<div class="railsec evlist"><div class="eyebrow">Your events</div>';
   evs.forEach(e => { h += '<button class="navbtn" data-act="open" data-id="'+e.id+'" aria-current="'+(S.view==='event' && S.eventId===e.id)+'"><span>'+esc(e.name||'Untitled event')+'</span><small>'+esc(fmtD(e.date))+'</small></button>'; });
@@ -130,6 +133,9 @@ function mainHTML(){
   if(S.view === 'reports') return top + reportsHTML();
   if(S.view === 'library') return top + libraryHTML();
   if(S.view === 'hours') return top + hoursHTML();
+  if(S.view === 'team') return top + teamHTML();
+  if(S.view === 'testing') return top + testingHTML();
+  if(S.view === 'series') return top + seriesHTML();
   if(S.view === 'home' || !S.events[S.eventId]) return top + homeHTML();
   return top + eventHTML(S.events[S.eventId]);
 }
@@ -138,6 +144,7 @@ function mainHTML(){
 function homeHTML(){
   const evs = sortedEvents(), today = todayYMD();
   let h = '<div class="head"><div><div class="eyebrow">Pre-event planning</div><h1>Your events</h1><p class="muted" style="margin-top:6px;max-width:62ch">Each event is entered once. Deadlines, equipment, share pages, calendar files and printouts are all built from that one record.</p></div><button class="btn primary" data-act="newEvent">+ New event</button></div>';
+  h += homeBannersHTML() + gettingStartedHTML() + assignedHTML() + seriesChipsHTML();
   if(!evs.length) h += '<div class="empty"><h2>No events yet</h2><p>Start from one of the templates below. Each comes with deadlines, a run of show, paperwork and an equipment list.</p><button class="btn primary" data-act="newEvent">+ New event</button></div>';
   else {
     h += '<div class="cards">';
@@ -163,17 +170,20 @@ function homeHTML(){
 /* ---------- contacts directory ---------- */
 function contactsHTML(){
   const q = norm(S.dirSearch);
-  const list = S.people.filter(p => !q || norm([p.name,p.org,p.role,p.email].join(' ')).includes(q));
+  const tagsUsed = [...new Set(S.people.flatMap(p => p.tags||[]))].sort();
+  const list = S.people.filter(p => (!q || norm([p.name,p.org,p.role,p.email].concat(p.tags||[]).join(' ')).includes(q)) && (!S.dirTag || (p.tags||[]).includes(S.dirTag)));
   const evCount = p => Object.values(S.events).filter(ev => ev.contacts.some(c => c.personId === p.id || personKey(c) === personKey(p))).length;
   let h = '<div class="head"><div><div class="eyebrow">Directory</div><h1>Contacts</h1><p class="muted" style="margin-top:6px;max-width:62ch">Everyone you work with, stored once. Pull them into any event from its People tab.</p></div><div class="row"><button class="btn" data-act="importPeople"'+ro()+'>Import from my events</button><button class="btn primary" data-act="addDir"'+ro()+'>+ Add contact</button></div></div>';
-  h += '<div class="panel"><div class="field" style="max-width:360px"><label for="dirSearch">Search</label><input id="dirSearch" value="'+esc(S.dirSearch)+'" placeholder="Name, organization or role"></div>';
-  h += '<div class="tablewrap"><table style="min-width:1100px"><thead><tr><th>Name</th><th>Organization</th><th>Usual role</th><th>Phone</th><th>Email</th><th>Invoice / quote link</th><th>Notes</th><th>Events</th><th></th></tr></thead><tbody>';
+  h += '<div class="panel"><div class="row" style="align-items:flex-end"><div class="field" style="max-width:360px;flex:1"><label for="dirSearch">Search</label><input id="dirSearch" value="'+esc(S.dirSearch)+'" placeholder="Name, organization, role or tag"></div>';
+  h += '<div class="field"><span class="lbl">Show '+help('tags')+'</span><div class="seg" role="group" aria-label="Filter by tag"><button data-act="dirTag" data-v="" aria-pressed="'+(!S.dirTag)+'">Everyone</button>'+[...new Set(CONTACT_TAGS.concat(tagsUsed))].map(t => '<button data-act="dirTag" data-v="'+esc(t)+'" aria-pressed="'+(S.dirTag===t)+'">'+esc(t)+'</button>').join('')+'</div></div></div>';
+  h += '<div class="tablewrap"><table style="min-width:1240px"><thead><tr><th>Name</th><th>Organization</th><th>Usual role</th><th>Tags</th><th>Phone</th><th>Email</th><th>Invoice / quote link</th><th>Notes</th><th>Events</th><th></th></tr></thead><tbody>';
   list.forEach(p => {
     const f = (k,type,ph) => '<input'+(type?' type="'+type+'"':'')+' data-person="'+p.id+'|'+k+'" value="'+esc(p[k])+'"'+(ph?' placeholder="'+ph+'"':'')+ro()+' aria-label="'+k+'">';
-    h += '<tr><td>'+f('name','','Name')+'</td><td>'+f('org')+'</td><td>'+f('role')+'</td><td>'+f('phone','tel')+'</td><td>'+f('email','email')+'</td><td>'+f('invoiceUrl','url','https://…')+'</td><td>'+f('notes')+'</td><td class="mono" style="text-align:center">'+evCount(p)+'</td><td><button class="iconbtn del" data-act="delDir" data-id="'+p.id+'" aria-label="Delete contact"'+ro()+'>✕</button></td></tr>';
+    h += '<tr><td>'+f('name','','Name')+'</td><td>'+f('org')+'</td><td>'+f('role')+'</td><td style="min-width:150px"><input data-person="'+p.id+'|tags" value="'+esc((p.tags||[]).join(', '))+'" placeholder="Staff, Vendor…" list="tags-dl"'+ro()+' aria-label="Tags, separated by commas"></td><td>'+f('phone','tel')+'</td><td>'+f('email','email')+'</td><td>'+f('invoiceUrl','url','https://…')+'</td><td>'+f('notes')+'</td><td class="mono" style="text-align:center">'+evCount(p)+'</td><td><button class="iconbtn del" data-act="delDir" data-id="'+p.id+'" aria-label="Delete contact"'+ro()+'>✕</button></td></tr>';
   });
-  if(!list.length) h += '<tr><td colspan="9" class="muted" style="padding:16px">'+(S.people.length?'No contacts match that search.':'No contacts yet. Import everyone from your events to start.')+'</td></tr>';
+  if(!list.length) h += '<tr><td colspan="10" class="muted" style="padding:16px">'+(S.people.length?'No contacts match that search.':'No contacts yet. Import everyone from your events to start.')+'</td></tr>';
   h += '</tbody></table></div></div>';
+  h += '<datalist id="tags-dl">'+[...new Set(CONTACT_TAGS.concat(tagsUsed))].map(t => '<option value="'+esc(t)+'">').join('')+'</datalist>';
   return h;
 }
 
@@ -182,17 +192,19 @@ function eventHTML(ev){
   const days = isYMD(ev.date) ? diffDays(todayYMD(), ev.date) : null;
   const cc = counts(runChecks(ev));
   let h = '<div class="head"><div><div class="eyebrow">'+esc(ev.kind==='venue'?'Venue view · '+(ev.series||'House show'):(ev.series||'One-off event'))+'</div><h1>'+esc(ev.name||'Untitled event')+'</h1><div class="meta"><span>'+esc(fmtLong(ev.date))+'</span>'+(ev.venue?'<span>'+esc(ev.venue)+'</span>':'')+'<span class="mono">Doors '+esc(fmt12(toMin(ev.doors)))+'</span>'+(days!=null&&days>=0?'<span class="tminus">'+(days===0?'Show day':'T−'+days+' days')+'</span>':'')+'</div></div>';
-  h += '<div class="row"><button class="btn" data-act="export">Download PDF / Word</button><button class="btn" data-act="cloneThis">Clone for next show</button><button class="btn" data-act="saveAsTemplate">Save as template</button><button class="btn" data-act="logTime"'+ro()+'>Log time</button>'+(S.confirmDel===ev.id?'<button class="btn danger" data-act="delEvent">Click again to delete</button>':'<button class="btn ghost danger" data-act="askDel">Delete</button>')+'</div></div>';
-  h += '<div class="tabs" role="tablist">'+TABS.map(([k,l]) => '<button class="tab" role="tab" data-act="tab" data-tab="'+k+'" aria-selected="'+(S.tab===k)+'">'+l+(k==='checks'&&(cc.critical||cc.warning)?' <span class="count '+(cc.critical?'crit':'warn')+'">'+(cc.critical+cc.warning)+'</span>':'')+'</button>').join('')+'</div>';
+  h += '<div class="row"><button class="btn" data-act="export">Download PDF / Word</button><button class="btn" data-act="tabsModal" title="Add a notes tab, or hide tabs this event doesn’t use">Tabs</button><button class="btn" data-act="cloneThis">Clone for next show</button><button class="btn" data-act="saveAsTemplate">Save as template</button><button class="btn" data-act="logTime"'+ro()+'>Log time</button>'+(S.confirmDel===ev.id?'<button class="btn danger" data-act="delEvent">Click again to delete</button>':'<button class="btn ghost danger" data-act="askDel">Delete</button>')+'</div></div>';
+  h += seriesStripHTML(ev);
+  h += '<div class="tabs" role="tablist">'+eventTabs(ev).map(([k,l]) => '<button class="tab" role="tab" data-act="tab" data-tab="'+esc(k)+'" aria-selected="'+(S.tab===k)+'">'+esc(l)+(k==='checks'&&(cc.critical||cc.warning)?' <span class="count '+(cc.critical?'crit':'warn')+'">'+(cc.critical+cc.warning)+'</span>':'')+'</button>').join('')+'</div>';
+  if(String(S.tab).startsWith('ct:')) return h + customTabHTML(ev, S.tab.slice(3));
   const fn = TAB_VIEWS[S.tab] || overviewHTML;
   return h + fn(ev);
 }
 function saveBtn(which){ return '<button class="btn small" data-act="export" data-which="'+which+'">Save this page</button>'; }
 function inp(list,id,key,val,type,extra){ return '<input'+(type?' type="'+type+'"':'')+' data-edit="'+list+'|'+id+'|'+key+'" value="'+esc(val)+'" aria-label="'+esc(key)+'"'+ro()+(extra||'')+'>'; }
 function sel(list,id,key,val,opts,cls){ return '<select class="'+(cls||'')+'" data-edit="'+list+'|'+id+'|'+key+'" aria-label="'+esc(key)+'"'+ro()+'>'+opts.map(o => { const v = Array.isArray(o)?o[0]:o, l = Array.isArray(o)?o[1]:o; return '<option value="'+esc(v)+'"'+(v===val?' selected':'')+'>'+esc(l)+'</option>'; }).join('')+'</select>'; }
-function audChips(list,id,arr){ return '<div class="chips">'+AUD.map(a => '<button class="chip" data-act="aud" data-list="'+list+'" data-id="'+id+'" data-aud="'+a+'" aria-pressed="'+(arr||[]).includes(a)+'"'+ro()+'>'+a+'</button>').join('')+'</div>'; }
+function audChips(list,id,arr){ return '<div class="chips">'+audOf(curEv()).map(g => '<button class="chip" data-act="aud" data-list="'+list+'" data-id="'+id+'" data-aud="'+esc(g.id)+'" aria-pressed="'+(arr||[]).includes(g.id)+'"'+ro()+'>'+esc(g.name)+'</button>').join('')+'</div>'; }
 function fact(key,label,val,type,hint){ return '<div class="field"><label for="f-'+key+'">'+label+'</label><input id="f-'+key+'" '+(type?'type="'+type+'" ':'')+'data-edit="facts||'+key+'" value="'+esc(val)+'"'+ro()+'>'+(hint?'<span class="hint">'+hint+'</span>':'')+'</div>'; }
-function peopleDatalist(ev){ const names = new Set(); ev.contacts.forEach(c => { if(c.name) names.add(c.name); if(c.org) names.add(c.org); }); S.people.forEach(p => { if(p.name) names.add(p.name); if(p.org) names.add(p.org); }); return '<datalist id="people-dl">'+[...names].map(n => '<option value="'+esc(n)+'">').join('')+'</datalist>'; }
+function peopleDatalist(ev){ const names = new Set(); (S.members||[]).forEach(m => { if(m.name) names.add(m.name); }); ev.contacts.filter(c => !c.roster).forEach(c => { if(c.name) names.add(c.name); if(c.org) names.add(c.org); }); S.people.forEach(p => { if(p.name) names.add(p.name); if(p.org) names.add(p.org); }); return '<datalist id="people-dl">'+[...names].map(n => '<option value="'+esc(n)+'">').join('')+'</datalist>'; }
 function checkRow(x){ return '<div class="check '+x.level+'"><span class="sev"></span><div><p>'+esc(x.text)+'</p><small>'+esc(x.area)+' · '+(x.level==='critical'?'Urgent':x.level==='warning'?'Review':'FYI')+'</small></div><button class="btn small ghost" data-act="fix" data-tab="'+x.tab+'"'+(x.ref?' data-rtype="'+x.ref.type+'" data-rid="'+x.ref.id+'"':'')+'>Fix →</button></div>'; }
 
 /* Little ✉ after an owner's name when they'll get reminder emails; a warning mark when they won't. */
@@ -204,7 +216,7 @@ function ownerHint(ev, name){
   return '<span class="hint" style="color:var(--warn)">'+esc(r.why === 'Not in People' ? name+' isn’t in People, so no reminder emails. Add them with an email.' : r.why === 'No email' ? name+' has no email in People, so no reminders.' : name+' has reminders turned off in People.')+'</span>';
 }
 /* "Appears on: Internal, Performers pages" for a setup item or program segment. */
-function pagesLine(auds){ const a = (auds||[]); return a.length ? 'Appears on the '+a.join(', ')+' page'+(a.length>1?'s':'')+'. Tap a tag to add or remove it.' : 'Not on any share page yet. Tap a tag to add it.'; }
+function pagesLine(auds){ const a = (auds||[]).map(x => gname(curEv(), x)); return a.length ? 'Appears on the '+a.join(', ')+' page'+(a.length>1?'s':'')+'. Tap a tag to add or remove it.' : 'Not on any share page yet. Tap a tag to add it.'; }
 /* Private links only exist on the real site. */
 function noLinksHint(what){ return '<span class="hint">On the live site, a private '+what+' link appears here. In this prototype, use the PDF, Word and calendar files.</span>'; }
 
@@ -228,7 +240,8 @@ function overviewHTML(ev){
   h += fact('name','Event name',ev.name) + fact('series','Series',ev.series) + fact('date','Show date',ev.date,'date','Change it and every deadline moves with it.');
   h += fact('venue','Venue',ev.venue) + fact('address','Address',ev.address) + fact('host','Host / MC',ev.host);
   h += fact('doors','Doors open',ev.doors,'time') + fact('end','Event ends',ev.end,'time') + fact('priceAdv','Advance ticket ($)',ev.priceAdv,'number');
-  h += fact('priceDoor','Door ticket ($)',ev.priceDoor,'number') + fact('capacity','Venue capacity',ev.capacity,'number') + fact('target','Target headcount',ev.target,'number');
+  h += fact('priceDoor','Door ticket ($)',ev.priceDoor,'number') + (ev.noHeadcount ? '' : fact('capacity','Venue capacity',ev.capacity,'number') + fact('target','Target headcount',ev.target,'number'));
+  h += '<div class="field"><span class="lbl">Attendance '+help('headcount')+'</span><label class="toggle" style="padding-top:8px"><input type="checkbox" data-edit="facts||noHeadcount"'+(ev.noHeadcount?' checked':'')+ro()+'> We don’t count attendance (open entry)</label></div>';
   h += '<div class="field wide"><label for="f-about">Short description (used on share pages and printouts)</label><textarea id="f-about" rows="2" data-edit="facts||about"'+ro()+'>'+esc(ev.about)+'</textarea></div></div></div>';
   if(ev.kind === 'venue'){
     h += '<div class="panel"><div class="panel-head"><div><h2>House rules</h2><p class="hint">One per line. These print on every share page and the master plan, so promoters see them before show day.</p></div></div><div class="field"><textarea id="f-rules" rows="5" data-edit="rules||"'+ro()+'>'+esc(ev.houseRules.join('\n'))+'</textarea></div></div>';
@@ -251,7 +264,7 @@ function overviewHTML(ev){
 function milestonesHTML(ev){
   const today = todayYMD();
   const rows = ev.milestones.map(m => Object.assign({d:addDays(ev.date,Number(m.offset)||0)}, m)).sort((a,b) => (Number(a.offset)||0)-(Number(b.offset)||0));
-  let h = '<div class="panel"><div class="panel-head"><div><h2>Deadlines</h2><p class="hint">Stored as days before show day (T−) or after it (T+, for editing and delivery). Drag a card between columns, or click it to open and edit everything. ✉ means the owner gets email reminders 7 days and 1 day before.</p></div><div class="row"><div class="seg" role="group" aria-label="View"><button data-act="msView" data-v="board" aria-pressed="'+(S.msView==='board')+'">Board</button><button data-act="msView" data-v="list" aria-pressed="'+(S.msView==='list')+'">List</button></div>'+saveBtn('milestones')+'<button class="btn small" data-act="personExport">Download by person</button><button class="btn small" data-act="addFrom" data-section="milestones"'+ro()+'>Add from templates</button><button class="btn primary small" data-act="addMs"'+ro()+'>+ Add deadline</button></div></div>';
+  let h = '<div class="panel"><div class="panel-head"><div><h2>Deadlines</h2><p class="hint">Stored as days before show day (T−) or after it (T+, for editing and delivery). Drag a card between columns, or click it to open and edit everything. ✉ means the owner gets an email reminder 7 days before the due date and again 1 day before, then once a week if it’s overdue. '+help('reminders')+'</p></div><div class="row"><div class="seg" role="group" aria-label="View"><button data-act="msView" data-v="board" aria-pressed="'+(S.msView==='board')+'">Board</button><button data-act="msView" data-v="list" aria-pressed="'+(S.msView==='list')+'">List</button></div>'+saveBtn('milestones')+'<button class="btn small" data-act="personExport">Download by person</button><button class="btn small" data-act="addFrom" data-section="milestones"'+ro()+'>Add from templates</button><button class="btn primary small" data-act="addMs"'+ro()+'>+ Add deadline</button></div></div>';
   if(rows.length && isYMD(ev.date)){
     const nowOff = diffDays(ev.date,today);
     const minOff = Math.min(...rows.map(r => Number(r.offset)||0), nowOff, -1);
@@ -273,17 +286,18 @@ function milestonesHTML(ev){
         h += '<button class="card'+(late?' late':'')+'" draggable="'+(!S.readOnly)+'" data-act="openMs" data-id="'+m.id+'" data-drag="'+m.id+'"><span class="ct">'+esc(m.title||'Untitled deadline')+'</span>';
         if(m.desc) h += '<span class="hint" style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">'+esc(m.desc)+'</span>';
         h += '<span class="cm"><span class="mono">'+fmtD(m.d,true)+'</span><span class="tcode">'+tcode(m.offset)+'</span>'+(late?'<span class="pill crit">Overdue</span>':'')+(m.hard?'<span class="pill accent">Hard</span>':'')+'</span>';
-        h += '<span class="cm"><span class="pill">'+esc(m.phase||PHASES[0])+'</span>'+(m.owner?'<span>'+esc(m.owner)+ownerMark(ev,m.owner)+'</span>':'<span class="hint">No owner</span>')+(cl.length?'<span class="mono">☑ '+cd+'/'+cl.length+'</span>':'')+'</span></button>';
+        h += '<span class="cm"><span class="pill">'+esc(m.phase||PHASES[0])+'</span>'+(m.owner?'<span>'+esc(m.owner)+ownerMark(ev,m.owner)+'</span>':'<span class="hint">No owner</span>')+'</span>';
+        h += stepsBarHTML(ev, m) + '</button>';
       });
       if(!col.length) h += '<p class="hint" style="padding:8px">Drop cards here.</p>';
       h += '</div>';
     });
     h += '</div>';
   } else {
-    h += '<div class="tablewrap"><table><thead><tr><th>Due</th><th>Days out</th><th style="width:40%">Task</th><th>Owner</th><th>Phase</th><th>Status</th><th></th></tr></thead><tbody>';
-    rows.forEach(m => { const late = m.status!=='done' && m.d < today;
-      h += '<tr class="'+(m.status==='done'?'done':'')+(late?' late':'')+'"><td class="mono" style="white-space:nowrap;padding-left:10px">'+fmtD(m.d,true)+'</td><td class="tcode">'+tcode(m.offset)+'</td><td><button class="btn ghost" style="white-space:normal;text-align:left;justify-content:flex-start;width:100%" data-act="openMs" data-id="'+m.id+'">'+esc(m.title)+(m.hard?' <span class="pill accent">Hard</span>':'')+'</button></td><td>'+esc(m.owner||'—')+(m.owner?ownerMark(ev,m.owner):'')+'</td><td>'+esc(m.phase||'')+'</td><td>'+sel('milestones',m.id,'status',m.status,MS_STATUS,'status '+m.status)+'</td><td><button class="btn small ghost" data-act="openMs" data-id="'+m.id+'">Open</button></td></tr>'; });
-    if(!rows.length) h += '<tr><td colspan="7" class="muted" style="padding:16px">No deadlines yet.</td></tr>';
+    h += '<div class="tablewrap"><table><thead><tr><th>Due</th><th>Days out</th><th style="width:36%">Task</th><th>Owner</th><th>Phase</th><th>Steps</th><th>Status</th><th></th></tr></thead><tbody>';
+    rows.forEach(m => { const late = m.status!=='done' && m.d < today; const P = stepProgress(m);
+      h += '<tr class="'+(m.status==='done'?'done':'')+(late?' late':'')+'"><td class="mono" style="white-space:nowrap;padding-left:10px">'+fmtD(m.d,true)+'</td><td class="tcode">'+tcode(m.offset)+'</td><td><button class="btn ghost" style="white-space:normal;text-align:left;justify-content:flex-start;width:100%" data-act="openMs" data-id="'+m.id+'">'+esc(m.title)+(m.hard?' <span class="pill accent">Hard</span>':'')+'</button></td><td>'+esc(m.owner||'—')+(m.owner?ownerMark(ev,m.owner):'')+'</td><td>'+esc(m.phase||'')+'</td><td style="min-width:110px">'+(P.total?'<span class="minibar" title="'+P.done+' of '+P.total+' steps"><i style="width:'+P.pct+'%"></i></span> <span class="mono hint">'+P.done+'/'+P.total+'</span>':'<span class="hint">—</span>')+'</td><td>'+sel('milestones',m.id,'status',m.status,MS_STATUS,'status '+m.status)+'</td><td><button class="btn small ghost" data-act="openMs" data-id="'+m.id+'">Open</button></td></tr>'; });
+    if(!rows.length) h += '<tr><td colspan="8" class="muted" style="padding:16px">No deadlines yet.</td></tr>';
     h += '</tbody></table></div>';
   }
   return h;
@@ -296,11 +310,17 @@ function msDrawer(ev,m){
   h += '<div class="facts two"><div class="field"><label for="d-status">Status</label>'+sel('milestones',m.id,'status',m.status,MS_STATUS,'status '+m.status).replace('<select','<select id="d-status"')+'</div><div class="field"><label for="d-owner">Owner</label><input id="d-owner" list="people-dl" data-edit="milestones|'+m.id+'|owner" value="'+esc(m.owner)+'"'+ro()+'>'+ownerHint(ev,m.owner)+'</div>';
   const off = Number(m.offset)||0;
   h += '<div class="field"><label for="d-days">When</label><div class="row" style="gap:6px;flex-wrap:nowrap"><input id="d-days" type="number" min="0" style="width:80px" data-edit="milestones|'+m.id+'|_days" value="'+Math.abs(off)+'"'+ro()+' aria-label="Days">'+'<select data-edit="milestones|'+m.id+'|_side" aria-label="Before or after show day"'+ro()+'>'+[['before','days before show'],['on','on show day'],['after','days after show']].map(([v,l]) => '<option value="'+v+'"'+((off<0&&v==='before')||(off===0&&v==='on')||(off>0&&v==='after')?' selected':'')+'>'+l+'</option>').join('')+'</select></div></div><div class="field"><label for="d-date">Due date</label><input id="d-date" type="date" data-edit="milestones|'+m.id+'|_date" value="'+d+'"'+ro()+'></div>';
-  h += '<div class="field"><label for="d-phase">Phase</label>'+sel('milestones',m.id,'phase',m.phase||PHASES[0],PHASES).replace('<select','<select id="d-phase"')+'</div><div class="field"><span class="lbl">Type</span><label class="toggle" style="padding-top:8px"><input type="checkbox" data-edit="milestones|'+m.id+'|hard"'+(m.hard?' checked':'')+ro()+'> Hard deadline</label></div></div>';
+  h += '<div class="field"><label for="d-phase">Phase '+help('phase')+'</label>'+sel('milestones',m.id,'phase',m.phase||PHASES[0],PHASES).replace('<select','<select id="d-phase"')+'</div><div class="field"><span class="lbl">Type '+help('hard')+'</span><label class="toggle" style="padding-top:8px"><input type="checkbox" data-edit="milestones|'+m.id+'|hard"'+(m.hard?' checked':'')+ro()+'> Hard deadline</label></div></div>';
   if(m.status === 'done') h += '<div class="field"><label for="d-doneAt">Completed on</label><input id="d-doneAt" type="date" data-edit="milestones|'+m.id+'|doneAt" value="'+esc(m.doneAt||'')+'"'+ro()+'><span class="hint">Recorded automatically when marked done. Past-event reports use it to spot tasks that run late.</span></div>';
-  h += '<div class="field"><span class="lbl">Checklist</span>';
-  (m.checklist||[]).forEach(c => { h += '<div class="subtask"><input type="checkbox" data-sub="'+m.id+'|'+c.id+'|done"'+(c.done?' checked':'')+ro()+' aria-label="Done"><input type="text" class="inline-in" data-sub="'+m.id+'|'+c.id+'|text" value="'+esc(c.text)+'"'+ro()+' aria-label="Step"><button class="iconbtn del" data-act="delSub" data-ms="'+m.id+'" data-id="'+c.id+'" aria-label="Remove step"'+ro()+'>✕</button></div>'; });
-  h += '<div class="subtask"><input type="text" class="inline-in" id="newSub" placeholder="Add a step and press Enter"'+ro()+'><button class="btn small" data-act="addSub" data-ms="'+m.id+'"'+ro()+'>Add</button></div></div>';
+  const P = stepProgress(m);
+  h += '<div class="field"><span class="lbl">Checklist steps '+help('checklist')+'</span>';
+  if(P.total) h += '<div class="prog"><span class="bar"><i style="width:'+P.pct+'%"></i></span><span class="mono hint">'+P.done+' of '+P.total+' done · '+P.pct+'%</span></div>';
+  (m.checklist||[]).forEach(c => {
+    const cd = c.offset != null && isYMD(ev.date) ? addDays(ev.date, Number(c.offset)||0) : '', late = cd && !c.done && cd < todayYMD();
+    h += '<div class="subtask step'+(late?' late':'')+'"><input type="checkbox" data-sub="'+m.id+'|'+c.id+'|done"'+(c.done?' checked':'')+ro()+' aria-label="Done"><input type="text" class="inline-in" data-sub="'+m.id+'|'+c.id+'|text" value="'+esc(c.text)+'"'+ro()+' aria-label="Step"><input type="date" class="inline-in stepdate" data-sub="'+m.id+'|'+c.id+'|due" value="'+esc(cd)+'" title="This step’s own due date (optional). The owner gets a reminder for it."'+ro()+' aria-label="Step due date"><button class="iconbtn del" data-act="delSub" data-ms="'+m.id+'" data-id="'+c.id+'" aria-label="Remove step"'+ro()+'>✕</button></div>';
+    if(late) h += '<span class="hint" style="color:var(--crit);padding-left:26px">Overdue since '+fmtD(cd,true)+'</span>';
+  });
+  h += '<div class="subtask"><input type="text" class="inline-in" id="newSub" placeholder="Add a step and press Enter"'+ro()+'><button class="btn small" data-act="addSub" data-ms="'+m.id+'"'+ro()+'>Add</button></div><span class="hint">Give a step its own date to get its own reminder, for example “Tell the city” a month out and “Confirm barricades” two days before.</span></div>';
   h += peopleDatalist(ev)+'</div><div class="df"><button class="btn ghost danger" data-act="del" data-list="milestones" data-id="'+m.id+'"'+ro()+'>Delete deadline</button><button class="btn primary" data-act="closeDrawer">Done</button></div>';
   return h;
 }
@@ -427,14 +447,16 @@ function equipmentHTML(ev){
 
 /* ---------- people ---------- */
 function peopleHTML(ev){
-  let h = '<div class="panel"><div class="panel-head"><div><h2>People</h2><p class="hint">Who’s working this event. Tags decide which share pages list each person. Phone numbers stay off outside pages unless you turn them on. Email reminders: “Their tasks” sends deadline and show-day emails; “Team” also sends payment reminders and the Monday summary.</p></div><div class="row">'+saveBtn('people')+'<button class="btn small" data-act="pickPeople"'+ro()+'>Add from contacts</button><button class="btn primary small" data-act="addPerson"'+ro()+'>+ Add person</button></div></div>';
+  const lists = ev.contacts.filter(c => c.roster).length, view = S.pplView === 'lists' ? 'lists' : 'team';
+  let h = '<div class="panel"><div class="panel-head"><div><h2>People</h2><p class="hint">'+(view==='team'?'Who’s working this event: staff, volunteers and key contacts. Tags decide which share pages list each person. Phone numbers stay off outside pages unless you turn them on. Email reminders: “Their tasks” sends deadline and show-day emails; “Team” '+help('team')+' also sends payment reminders and the Monday summary.':'Group lists: vendors, artists and others who get their group’s itinerary but aren’t on the planning team. Import them from Jotform or a spreadsheet, then email each group its itinerary from Share pages.')+'</p></div><div class="row"><div class="seg" role="group" aria-label="Show"><button data-act="pplView" data-v="team" aria-pressed="'+(view==='team')+'">Team &amp; staff ('+(ev.contacts.length-lists)+')</button><button data-act="pplView" data-v="lists" aria-pressed="'+(view==='lists')+'">Group lists ('+lists+')</button></div>'+saveBtn('people')+(view==='team'?'<button class="btn small" data-act="pickPeople"'+ro()+'>Add from contacts</button><button class="btn primary small" data-act="addPerson"'+ro()+'>+ Add person</button>':'<button class="btn primary small" data-act="importList"'+ro()+'>Import a list</button>')+'</div></div>';
+  if(view === 'lists') return h + rosterTableHTML(ev) + '</div>';
   h += '<div class="tablewrap"><table class="ppl" style="min-width:1430px"><thead><tr><th></th><th>Role</th><th>Name</th><th>Organization</th><th>Phone</th><th>Email</th><th>Shown on</th><th>Phone visible</th><th>Email reminders</th><th>Invoice / quote link</th><th></th></tr></thead><tbody data-reorder="contacts">';
-  ev.contacts.forEach(c => {
+  ev.contacts.filter(c => !c.roster).forEach(c => {
     const inDir = S.people.some(p => p.id === c.personId || personKey(p) === personKey(c));
     h += '<tr data-row="'+c.id+'">'+gripCell('contacts',c.id)+'<td>'+inp('contacts',c.id,'role',c.role)+'</td><td>'+inp('contacts',c.id,'name',c.name,'',' placeholder="Name"')+'</td><td>'+inp('contacts',c.id,'org',c.org)+'</td><td>'+inp('contacts',c.id,'phone',c.phone,'tel')+'</td><td>'+inp('contacts',c.id,'email',c.email,'email')+'</td><td>'+audChips('contacts',c.id,c.audiences)+'</td>';
     h += '<td><label class="toggle"><input type="checkbox" data-edit="contacts|'+c.id+'|showPhone"'+(c.showPhone?' checked':'')+ro()+'> Show</label></td><td><label class="toggle" title="'+(c.email?'Deadline and show-day emails':'Add an email to send reminders')+'"><input type="checkbox" data-edit="contacts|'+c.id+'|remind"'+(c.remind!==false?' checked':'')+ro()+'> Their tasks'+(c.email?'':' <span class="hint">(no email)</span>')+'</label><label class="toggle" title="Planning team: payment reminders and the Monday summary"><input type="checkbox" data-edit="contacts|'+c.id+'|team"'+(c.team?' checked':'')+ro()+'> Team</label></td><td>'+inp('contacts',c.id,'invoiceUrl',c.invoiceUrl,'url',' placeholder="https://…"')+'</td><td style="white-space:nowrap"><button class="btn small ghost" data-act="send" data-id="'+c.id+'">Send page</button>'+(inDir?'':'<button class="btn small ghost" data-act="saveToDir" data-id="'+c.id+'"'+ro()+'>Save to contacts</button>')+'<button class="iconbtn del" data-act="del" data-list="contacts" data-id="'+c.id+'" aria-label="Remove person"'+ro()+'>✕</button></td></tr>';
   });
-  if(!ev.contacts.length) h += '<tr><td colspan="11" class="muted" style="padding:16px">No people yet.</td></tr>';
+  if(!ev.contacts.some(c => !c.roster)) h += '<tr><td colspan="11" class="muted" style="padding:16px">No people yet.</td></tr>';
   return h + '</tbody></table></div></div>';
 }
 
@@ -464,7 +486,7 @@ function layoutHTML(ev){
 function buildLayoutHTML(ev){
   const L = ev.layout, W = Number(L.room.w)||60, D = Number(L.room.d)||80;
   let h = '<div class="panel"><div class="row" style="justify-content:space-between"><div class="row"><div class="field" style="width:120px"><label for="roomW">Room width (ft)</label><input id="roomW" type="number" min="10" max="400" data-edit="room||w" value="'+W+'"'+ro()+'></div><div class="field" style="width:120px"><label for="roomD">Room depth (ft)</label><input id="roomD" type="number" min="10" max="400" data-edit="room||d" value="'+D+'"'+ro()+'></div><span class="hint" style="align-self:flex-end;padding-bottom:10px">'+(W*D).toLocaleString()+' sq ft</span></div></div>';
-  h += '<div class="field"><span class="lbl">Add a piece</span><div class="palette">'+Object.entries(LAYOUT_PIECES).map(([k,p]) => '<button data-act="addPiece" data-kind="'+k+'"'+ro()+'>'+esc(p.label)+'<small>'+esc(p.sub)+'</small></button>').join('')+'</div></div>';
+  h += '<div class="field"><span class="lbl">Add a piece '+help('pieces')+'</span><div class="palette">'+Object.entries(LAYOUT_PIECES).map(([k,p]) => '<button data-act="addPiece" data-kind="'+k+'"'+ro()+(p.custom?' class="custom"':'')+'>'+esc(p.label)+'<small>'+esc(p.sub)+'</small></button>').join('')+'</div></div>';
   const g = []; for(let x=0;x<=W;x+=5) g.push('<line x1="'+x+'" y1="0" x2="'+x+'" y2="'+D+'" stroke="var(--grid)" stroke-width="'+(x%10===0?0.18:0.1)+'"/>'); for(let y=0;y<=D;y+=5) g.push('<line x1="0" y1="'+y+'" x2="'+W+'" y2="'+y+'" stroke="var(--grid)" stroke-width="'+(y%10===0?0.18:0.1)+'"/>');
   const fs = Math.max(1.1, Math.min(W,D)/45);
   let pcs = '';
@@ -477,15 +499,20 @@ function buildLayoutHTML(ev){
     else if(def.text) shape = '<rect width="'+w+'" height="'+hh+'" fill="transparent" stroke="'+(selected?'var(--accent)':'none')+'" stroke-width="0.3" stroke-dasharray="0.6 0.4"/>';
     else if(def.zone) shape = '<rect width="'+w+'" height="'+hh+'" rx="0.6" fill="var(--warn-soft)" fill-opacity="0.7" stroke="'+(selected?'var(--accent)':'var(--warn)')+'" stroke-width="'+(selected?0.4:0.2)+'" stroke-dasharray="1 0.6"/>';
     else if(p.kind === 'door') shape = '<rect width="'+w+'" height="'+hh+'" fill="var(--good)" fill-opacity="0.85" stroke="'+(selected?'var(--accent)':'none')+'" stroke-width="0.4"/>';
+    else if(p.group && gindex(ev, p.group) >= 0) shape = '<rect width="'+w+'" height="'+hh+'" rx="0.4" fill="var(--g'+(gindex(ev, p.group) % GROUP_RGB.length)+')" fill-opacity="0.22" stroke="'+(selected?'var(--accent)':'var(--g'+(gindex(ev, p.group) % GROUP_RGB.length)+')')+'" stroke-width="'+(selected?0.45:0.25)+'"/>';
     else shape = '<rect width="'+w+'" height="'+hh+'" rx="0.4" fill="'+(p.kind==='stage'?'var(--accent)':p.kind==='bar'?'var(--t3)':p.kind==='speaker'?'var(--ink-2)':'var(--surface)')+'" fill-opacity="'+(p.kind==='stage'||p.kind==='bar'||p.kind==='speaker'?0.85:1)+'" stroke="'+(selected?'var(--accent)':'var(--ink-3)')+'" stroke-width="'+(selected?0.4:0.18)+'"/>';
-    const light = p.kind==='stage'||p.kind==='bar'||p.kind==='speaker';
-    const lbl = p.label || def.label;
+    const light = !p.group && (p.kind==='stage'||p.kind==='bar'||p.kind==='speaker');
+    const lbl = pieceLabel(ev, p);
     const vert = !def.round && !def.text && hh > w*1.4, longSide = Math.max(w,hh), fsz = def.text?fs*1.2:Math.min(fs, Math.max(0.7, longSide/Math.max(4,lbl.length)*1.6));
     pcs += '<g data-piece="'+p.id+'" transform="translate('+p.x+' '+p.y+')" style="cursor:'+(S.readOnly?'pointer':'move')+'">'+shape+'<text x="'+w/2+'" y="'+(hh/2+fsz*0.35)+'"'+(vert?' transform="rotate(-90 '+w/2+' '+hh/2+')"':'')+' text-anchor="middle" font-size="'+fsz+'" font-family="IBM Plex Sans, system-ui, sans-serif" font-weight="600" fill="'+(light?'var(--accent-ink)':'var(--ink)')+'" style="pointer-events:none">'+esc(lbl)+'</text></g>';
   });
   h += '<div><svg class="room" id="room" viewBox="-1 -1 '+(W+2)+' '+(D+2)+'" style="width:100%;height:auto;max-height:72vh" role="img" aria-label="Room layout, '+W+' by '+D+' feet"><rect x="0" y="0" width="'+W+'" height="'+D+'" fill="var(--floor)" stroke="var(--ink)" stroke-width="0.35"/>'+g.join('')+pcs+'</svg></div>';
   const tally = {}; L.pieces.forEach(p => { const k = (LAYOUT_PIECES[p.kind]||{}).label || p.kind; tally[k] = (tally[k]||0)+1; });
   h += '<div class="legend">'+(Object.keys(tally).length ? Object.entries(tally).map(([k,v]) => '<span class="mono">'+v+' × '+esc(k)+'</span>').join('') : '<span>Empty room. Add pieces from the list above.</span>')+'</div>';
+  // [beta] booths colored by group, and a nudge when one group's booths are bunched together
+  const used = groupsOf(ev).filter(g => L.pieces.some(p => p.group === g.id));
+  if(used.length) h += '<div class="legend">'+used.map(g => '<span><i style="background:var(--g'+(gindex(ev, g.id) % GROUP_RGB.length)+')"></i>'+esc(g.name)+' · '+L.pieces.filter(p => p.group === g.id).length+'</span>').join('')+'</div>';
+  bunchedGroups(ev).forEach(b => h += '<p class="hint" style="color:var(--warn)">'+b.count+' booths from '+esc(b.name)+' sit side by side. Mixing them with other groups helps each vendor get seen.</p>');
   const stages = L.pieces.filter(p => p.kind === 'stage').length;
   if(stages) h += '<p class="hint">Stage: '+stages+' module'+(stages>1?'s':'')+' = '+(stages*24)+' sq ft of deck.</p>';
   return h + '</div>';
@@ -511,7 +538,11 @@ function pinDrawer(ev,p){
 function pieceDrawer(ev,p){
   const def = LAYOUT_PIECES[p.kind] || LAYOUT_PIECES.label;
   let h = '<div class="dh"><div><div class="eyebrow">'+esc(def.label)+'</div><h3 style="margin-top:2px">'+esc(p.label||def.label)+'</h3></div><button class="iconbtn" data-act="closeDrawer" aria-label="Close">✕</button></div><div class="db">';
-  h += '<div class="field"><label for="pc-label">Label</label><input id="pc-label" data-edit="pieces|'+p.id+'|label" value="'+esc(p.label)+'" placeholder="'+esc(def.label)+'"'+ro()+'></div>';
+  h += '<div class="field"><label for="pc-label">Label</label><input id="pc-label" data-edit="pieces|'+p.id+'|label" value="'+esc(p.label)+'" placeholder="'+esc(pieceLabel(ev, Object.assign({}, p, {label:''})))+'"'+ro()+'></div>';
+  // [beta] which group this booth is for (colors it), and which vendor is in it
+  h += '<div class="facts two"><div class="field"><label for="pc-group">Group</label><select id="pc-group" data-edit="pieces|'+p.id+'|group"'+ro()+'><option value="">None</option>'+groupsOf(ev).map(g => '<option value="'+esc(g.id)+'"'+(p.group===g.id?' selected':'')+'>'+esc(g.name)+'</option>').join('')+'</select></div>';
+  const who = ev.contacts.filter(c => !p.group || (c.audiences||[]).includes(p.group));
+  h += '<div class="field"><label for="pc-who">Who’s here</label><select id="pc-who" data-edit="pieces|'+p.id+'|contactId"'+ro()+'><option value="">Nobody yet</option>'+who.map(c => '<option value="'+c.id+'"'+(p.contactId===c.id?' selected':'')+'>'+esc(c.name||c.org||'Unnamed')+(c.booth?' · '+esc(c.booth):'')+'</option>').join('')+'</select></div></div>';
   h += '<div class="facts two"><div class="field"><label for="pc-w">Width (ft)</label><input id="pc-w" type="number" min="0.5" step="0.5" data-edit="pieces|'+p.id+'|w" value="'+p.w+'"'+ro()+'></div><div class="field"><label for="pc-h">Depth (ft)</label><input id="pc-h" type="number" min="0.5" step="0.5" data-edit="pieces|'+p.id+'|h" value="'+p.h+'"'+ro()+'></div></div>';
   h += '<div class="row"><button class="btn small" data-act="rotPiece" data-id="'+p.id+'"'+ro()+'>Rotate 90°</button><button class="btn small" data-act="dupPiece" data-id="'+p.id+'"'+ro()+'>Duplicate</button></div>';
   h += '<p class="hint">Position: '+(+p.x).toFixed(1)+' ft from the left wall, '+(+p.y).toFixed(1)+' ft from the top wall.</p>';
@@ -520,16 +551,18 @@ function pieceDrawer(ev,p){
 
 /* ---------- share pages ---------- */
 function shareHTML(ev){
-  const a = S.shareAud;
+  const groups = audOf(ev); if(!groups.some(g => g.id === S.shareAud)) S.shareAud = (groups[1] || groups[0]).id;
+  const a = S.shareAud, aName = gname(ev, a), G = groups.find(g => g.id === a) || {};
   const rows = daySchedule(ev).filter(x => a==='Internal' || (x.audiences||[]).includes(a));
-  const people = ev.contacts.filter(c => a==='Internal' || (c.audiences||[]).includes(a));
-  const gear = a === 'Vendors' ? ev.equipment.filter(e => e.source === 'Vendor brings') : [];
-  let h = '<div class="panel"><div class="panel-head"><div><h2>Share pages</h2><p class="hint">One itinerary per group, built from the tags you set on the Run of show and People tabs. New items show up here the moment they’re tagged. Deadlines and money never appear on share pages.</p></div><div class="seg" role="group" aria-label="Audience">'+AUD.map(x => '<button data-act="shareAud" data-aud="'+x+'" aria-pressed="'+(x===a)+'">'+x+'</button>').join('')+'</div></div>';
+  const people = ev.contacts.filter(c => !c.roster && (a==='Internal' || (c.audiences||[]).includes(a)));
+  const gear = G.vendor ? ev.equipment.filter(e => e.source === 'Vendor brings') : [];
+  let h = '<div class="panel"><div class="panel-head"><div><h2>Share pages '+help('groups')+'</h2><p class="hint">One itinerary per group, built from the tags you set on the Run of show and People tabs. New items show up here the moment they’re tagged. Deadlines and money never appear on share pages.</p></div><div class="row"><div class="seg" role="group" aria-label="Group">'+groups.map(g => '<button data-act="shareAud" data-aud="'+esc(g.id)+'" aria-pressed="'+(g.id===a)+'">'+esc(g.name)+'</button>').join('')+'</div><button class="btn small" data-act="editGroups"'+ro()+'>Edit groups</button></div></div>';
   const L = S.links[ev.id]; if(!L) loadLinks(ev.id);
   const link = L && L[a];
-  h += '<div class="field"><span class="lbl">Private link for '+esc(a)+'</span>'+(!store.links?noLinksHint('share-page'):link?'<div class="row"><input class="inline-in mono" style="flex:1;min-width:220px;font-size:12.5px" readonly value="'+esc(link.page)+'" aria-label="Share link"><button class="btn primary small" data-act="copyLink" data-url="'+esc(link.page)+'">Copy link</button><a class="btn small" href="'+esc(link.page)+'" target="_blank" rel="noopener">Open</a></div><span class="hint">Anyone with this link sees this page, and it updates whenever you change the event. Text or email it to the group.</span>':'<span class="hint">Making the link…</span>')+'</div>';
-  h += '<div class="row"><button class="btn small" data-act="quickExport" data-which="share:'+a+'" data-fmt="pdf">'+esc(a)+' itinerary as PDF</button><button class="btn small" data-act="quickExport" data-which="share:'+a+'" data-fmt="word">As Word</button>'+(link?'<button class="btn small" data-act="copyLink" data-url="'+esc(link.webcal)+'" data-label="Calendar subscription link">Copy calendar subscription link</button>':'')+'<button class="btn small" data-act="icsAud">Calendar file (.ics)</button></div></div>';
-  h += '<div class="sheet"><div class="sheet-top"><span class="k">'+esc(ev.series||'Blackmagic Media')+' · '+esc(a)+' itinerary</span><h2>'+esc(ev.name||'Untitled event')+'</h2><div class="m"><span>'+esc(fmtLong(ev.date))+'</span>'+(ev.venue?'<span>'+esc(ev.venue)+'</span>':'')+(ev.address?'<span>'+esc(ev.address)+'</span>':'')+'</div></div><div class="sheet-body">';
+  h += '<div class="field"><span class="lbl">Private link for '+esc(aName)+'</span>'+(!store.links?noLinksHint('share-page'):link?'<div class="row"><input class="inline-in mono" style="flex:1;min-width:220px;font-size:12.5px" readonly value="'+esc(link.page)+'" aria-label="Share link"><button class="btn primary small" data-act="copyLink" data-url="'+esc(link.page)+'">Copy link</button><a class="btn small" href="'+esc(link.page)+'" target="_blank" rel="noopener">Open</a></div><span class="hint">Anyone with this link sees this page, and it updates whenever you change the event. Text or email it to the group.</span>':'<span class="hint">Making the link…</span>')+'</div>';
+  h += '<div class="row"><button class="btn small" data-act="quickExport" data-which="share:'+esc(a)+'" data-fmt="pdf">'+esc(aName)+' itinerary as PDF</button><button class="btn small" data-act="quickExport" data-which="share:'+esc(a)+'" data-fmt="word">As Word</button>'+(link?'<button class="btn small" data-act="copyLink" data-url="'+esc(link.webcal)+'" data-label="Calendar subscription link">Copy calendar subscription link</button>':'')+'<button class="btn small" data-act="icsAud">Calendar file (.ics)</button></div></div>';
+  if(a !== 'Internal') h += groupListHTML(ev, a);
+  h += '<div class="sheet"><div class="sheet-top"><span class="k">'+esc(ev.series||'Blackmagic Media')+' · '+esc(aName)+' itinerary</span><h2>'+esc(ev.name||'Untitled event')+'</h2><div class="m"><span>'+esc(fmtLong(ev.date))+'</span>'+(ev.venue?'<span>'+esc(ev.venue)+'</span>':'')+(ev.address?'<span>'+esc(ev.address)+'</span>':'')+'</div></div><div class="sheet-body">';
   if(ev.about) h += '<p>'+esc(ev.about)+'</p>';
   h += '<div><div class="eyebrow" style="margin-bottom:6px">Your schedule</div>'+(rows.length?'':'<p class="muted">Nothing is tagged for this group yet.</p>');
   rows.forEach(x => h += '<div class="sheet-row"><span class="t">'+fmt12(x.s)+(x.kind==='setup'?' – '+fmt12(x.e):'')+'</span><div>'+esc((x.who?x.who+' · ':'')+x.title)+'<div class="d">'+esc(x.kind==='setup'?x.track:(x.e-x.s)+' min')+'</div></div></div>');
@@ -579,10 +612,10 @@ function notesBtnHTML(){ const open = S.notes.filter(n => !n.done).length; retur
 function drawerHTML(){
   if(!S.drawer) return '';
   if(S.drawer === 'notes'){
-    let h = '<aside class="drawer'+(S.drawerStill?' still':'')+'" aria-label="Testing notes"><div class="dh"><div><h3>Testing notes</h3><span class="hint">Jot what works, what’s missing, what confused you. Each note records the screen you were on.</span></div><button class="iconbtn" data-act="closeDrawer" aria-label="Close notes">✕</button></div><div class="db">';
-    h += '<div class="field"><label for="noteText">New note</label><textarea id="noteText" rows="3" placeholder="e.g. Need a place for vendor parking info"></textarea></div><button class="btn primary" data-act="saveNote"'+ro()+'>Save note</button>';
+    let h = '<aside class="drawer'+(S.drawerStill?' still':'')+'" aria-label="Testing notes"><div class="dh"><div><h3>Testing notes</h3><span class="hint">Jot what works, what’s missing, what confused you. Each note records the screen you were on.'+(store.kind==='django'?' Tick the box to send it to the MagicShow team.':'')+'</span></div><button class="iconbtn" data-act="closeDrawer" aria-label="Close notes">✕</button></div><div class="db">';
+    h += '<div class="field"><label for="noteText">New note</label><textarea id="noteText" rows="3" placeholder="e.g. Need a place for vendor parking info"></textarea>'+(store.kind==='django'?'<label class="toggle"><input type="checkbox" id="noteShare"'+(S.noteShare!==false?' checked':'')+'> Send to the MagicShow team (beta feedback)</label>':'')+'</div><button class="btn primary" data-act="saveNote"'+ro()+'>Save note</button>';
     if(!S.notes.length) h += '<p class="muted">No notes yet.</p>';
-    S.notes.forEach(n => { h += '<div class="note'+(n.done?' done':'')+'"><div class="nm"><span>'+esc(n.where||'')+' · '+(n.createdAt?fmtD(new Date(n.createdAt).toISOString().slice(0,10)):'')+'</span><span class="row" style="gap:4px"><label class="toggle"><input type="checkbox" data-note="'+n.id+'"'+(n.done?' checked':'')+'> Handled</label><button class="iconbtn del" data-act="delNote" data-id="'+n.id+'" aria-label="Delete note">✕</button></span></div><p>'+esc(n.text)+'</p></div>'; });
+    S.notes.forEach(n => { h += '<div class="note'+(n.done?' done':'')+'"><div class="nm"><span>'+esc(n.where||'')+' · '+(n.createdAt?fmtD(new Date(n.createdAt).toISOString().slice(0,10)):'')+'</span><span class="row" style="gap:4px"><label class="toggle"><input type="checkbox" data-note="'+n.id+'"'+(n.done?' checked':'')+'> Handled</label>'+(n.shared?'<span class="pill accent" title="Sent to the MagicShow team">Sent</span>':'')+'<button class="iconbtn del" data-act="delNote" data-id="'+n.id+'" aria-label="Delete note">✕</button></span></div><p>'+esc(n.text)+'</p></div>'; });
     return h + '</div></aside>';
   }
   const ev = curEv(); if(!ev) return '';
@@ -641,7 +674,7 @@ function modalHTML(){
     h += '<div><h2 id="mt">Send '+esc(c.name||'this person')+' their page</h2><p class="hint">Copy this message into a text or email. It includes their private link, which always shows the latest plan.</p></div>';
     if(hasTasks) h += '<div class="banner info">'+esc(c.name||'This person')+' owns '+(mine.deadlines.length+mine.paperwork.length+mine.equipment.length)+' task'+(mine.deadlines.length+mine.paperwork.length+mine.equipment.length>1?'s':'')+'. '+(store.links?(S.personLinks[pk]?'Their private “My tasks” link is in the message; they can mark things done there without logging in.':'Making their “My tasks” link…'):'On the live site, the message also includes their private “My tasks” link.')+' <button class="btn small ghost" data-act="quickExport" data-which="person:'+esc(c.name||c.org)+'" data-fmt="pdf">Their tasks as PDF</button></div>';
     h += '<textarea class="aiout" id="sendText" style="min-height:220px">'+esc(msg)+'</textarea><div class="row">'+(c.phone?'<span class="hint">Phone: <span class="mono">'+esc(c.phone)+'</span></span>':'')+(c.email?'<span class="hint">Email: <span class="mono">'+esc(c.email)+'</span></span>':'')+'</div>';
-    h += '<div class="row" style="justify-content:flex-end"><button class="btn ghost" data-act="closeModal">Close</button><button class="btn" data-act="quickExport" data-which="share:'+a+'" data-fmt="pdf">'+esc(a)+' itinerary PDF</button><button class="btn" data-act="icsFor" data-aud="'+a+'">Calendar file</button><button class="btn primary" data-act="copySend">Copy message</button></div>';
+    h += '<div class="row" style="justify-content:flex-end"><button class="btn ghost" data-act="closeModal">Close</button><button class="btn" data-act="quickExport" data-which="share:'+esc(a)+'" data-fmt="pdf">'+esc(gname(ev,a))+' itinerary PDF</button><button class="btn" data-act="icsFor" data-aud="'+esc(a)+'">Calendar file</button>'+(store.email && c.email && a !== 'Internal' ? '<button class="btn" data-act="emailOne" data-id="'+c.id+'" data-aud="'+esc(a)+'"'+ro()+'>Email it to them</button>' : '')+'<button class="btn primary" data-act="copySend">Copy message</button></div>';
   }
   return h + '</div></div>';
 }
@@ -664,7 +697,10 @@ function cloneEvent(src){
   const c = normalize(clone(src), src.id);
   ['milestones','setup','contacts','compliance','equipment','budget'].forEach(k => c[k].forEach(x => x.id = uid()));
   c.program.items.forEach(x => x.id = uid());
-  c.layout.pins.forEach(x => { x.id = uid(); x.contactId = ''; }); c.layout.pieces.forEach(x => x.id = uid());
+  // contacts get new ids above; booths keep pointing at the same vendor
+  const idMap = {}; src.contacts.forEach((x, i) => { if(c.contacts[i]) idMap[x.id] = c.contacts[i].id; });
+  c.contacts.forEach(x => { x.sentAt = null; x.feePaid = false; });
+  c.layout.pins.forEach(x => { x.id = uid(); x.contactId = ''; }); c.layout.pieces.forEach(x => { x.id = uid(); x.contactId = idMap[x.contactId] || ''; });
   c.milestones.forEach(x => { x.status = 'todo'; x.doneAt = ''; x.checklist.forEach(s => s.done = false); });
   c.budget.forEach(b => { b.actual = ''; b.paid = ''; b.due = ''; b.files = []; b.status = b.kind === 'income' ? 'expected' : 'estimated'; });
   c.approvals = []; c.wrapup = {ratings:{}};

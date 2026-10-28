@@ -13,16 +13,18 @@
   <form method="post" novalidate style="display:flex;flex-direction:column;gap:14px">
     {% csrf_token %}
     <h2>Create your account</h2>
+    {% if invited %}<div class="banner info">You were invited to join an organization. Create your account and you'll join it right away.</div>{% endif %}
+    <input type="hidden" name="next" value="{{ next }}">
     {% if errors.form %}<div class="banner">{{ errors.form }}</div>{% endif %}
     <div class="field"><label for="s-name">Your name</label><input id="s-name" name="name" value="{{ v.name }}" autocomplete="name" required autofocus>{% if errors.name %}<span class="err">{{ errors.name }}</span>{% endif %}</div>
-    <div class="field"><label for="s-org">Organization or business</label><input id="s-org" name="org" value="{{ v.org }}" autocomplete="organization" placeholder="Optional"><span class="hint">This names your workspace. You can change it later.</span></div>
+    {% if not invited %}<div class="field"><label for="s-org">Organization or business</label><input id="s-org" name="org" value="{{ v.org }}" autocomplete="organization" placeholder="Optional"><span class="hint">If it's already on MagicShow, you can ask to join it. If not, we'll create it with you as its owner. You also get your own space for personal events.</span></div>{% endif %}
     <div class="field"><label for="s-email">Email</label><input id="s-email" type="email" name="email" value="{{ v.email }}" autocomplete="email" required>{% if errors.email %}<span class="err">{{ errors.email }}</span>{% else %}<span class="hint">You'll log in with this.</span>{% endif %}</div>
     <div class="field"><label for="s-pass">Password</label><input id="s-pass" type="password" name="password" autocomplete="new-password" required minlength="8">{% if errors.password %}<span class="err">{{ errors.password }}</span>{% else %}<span class="hint">At least 8 characters, and not only numbers.</span>{% endif %}<label class="toggle" style="margin-top:4px"><input type="checkbox" id="s-show"> Show password</label></div>
     {% if needs_code %}<div class="field"><label for="s-code">Sign-up code</label><input id="s-code" name="code" value="{{ v.code }}" autocomplete="off" required>{% if errors.code %}<span class="err">{{ errors.code }}</span>{% else %}<span class="hint">The code you were given by {{ team }}.</span>{% endif %}</div>{% endif %}
     <label class="opt"><input type="checkbox" name="retainer"{% if v.retainer %} checked{% endif %}><span><b>I'm working with {{ team }} on a retainer</b><br><span class="hint">Lets their team open your workspace and build events with you. You can switch this off any time under Account.</span></span></label>
     <div class="hp" aria-hidden="true"><label for="s-web">Leave this empty</label><input id="s-web" name="website" tabindex="-1" autocomplete="off"></div>
     <button class="btn primary" type="submit" style="justify-content:center">Create account</button>
-    <p class="hint">Already have an account? <a href="{% url 'login' %}">Log in</a></p>
+    <p class="hint">Already have an account? <a href="{% url 'login' %}{% if next %}?next={{ next|urlencode }}{% endif %}">Log in</a></p>
   </form>
   <script>document.getElementById('s-show').addEventListener('change', function(){ document.getElementById('s-pass').type = this.checked ? 'text' : 'password'; });</script>
 {% endif %}

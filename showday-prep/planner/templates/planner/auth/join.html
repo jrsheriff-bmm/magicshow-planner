@@ -1,0 +1,23 @@
+{% extends "planner/auth/base.html" %}
+{% comment %}[beta] /join/<code>/ — the page an invite link opens. See planner/teams.py (join_page).{% endcomment %}
+{% block title %}Join an organization · MagicShow{% endblock %}
+{% block content %}
+{% if not valid %}
+  <h2>This invite link doesn't work anymore</h2>
+  <p class="muted">Invite links last {{ 14 }} days and can be switched off by the organization's owners. Ask them for a new one.</p>
+  <a class="btn primary" href="{% url 'app' %}" style="justify-content:center">Open MagicShow</a>
+{% elif not user.is_authenticated %}
+  <h2>Join {{ invite.org.name }}</h2>
+  <p class="muted">You were invited to plan events with {{ invite.org.name }}{% if invite.org.city %} ({{ invite.org.city }}){% endif %} on MagicShow. Create an account, or log in if you have one, and you'll join right away.</p>
+  <a class="btn primary" href="{% url 'signup' %}?next={{ request.path|urlencode }}" style="justify-content:center">Create an account</a>
+  <a class="btn" href="{% url 'login' %}?next={{ request.path|urlencode }}" style="justify-content:center">I have an account: log in</a>
+{% else %}
+  <form method="post" style="display:flex;flex-direction:column;gap:14px">
+    {% csrf_token %}
+    <h2>Join {{ invite.org.name }}?</h2>
+    <p class="muted">You'll see its events and can be assigned tasks. Your own workspace stays separate; switch between them in the left menu.</p>
+    <button class="btn primary" type="submit" style="justify-content:center">Join {{ invite.org.name }}</button>
+    <a class="btn ghost" href="{% url 'app' %}" style="justify-content:center">Not now</a>
+  </form>
+{% endif %}
+{% endblock %}

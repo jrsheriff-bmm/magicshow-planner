@@ -14,7 +14,7 @@
 /* ---------- templates: starting points (product feature), not saved events ---------- */
 const TRACKS = ['Production','Food & bar','Doors & security','Program & talent'];
 const PHASES = ['Venue & permits','Production & site','Promotion','Final prep'];
-const EQ_CATS = ['Audio','Stage & lighting','Front of house','Food & bar','Signage & decor','Safety','Media','Supplies'];
+const EQ_CATS = ['Audio','Stage & lighting','Front of house','Food & bar','Tables & chairs','Tents & shelter','Signage & decor','Safety','Media','Supplies'];
 const EQ_SOURCES = ['Owned','Rent','Vendor brings','Venue provides','Buy','Borrow'];
 const AUDMAP = {I:'Internal',P:'Performers',V:'Vendors',N:'Venue',S:'Security'};
 const SRCMAP = {O:'Owned',R:'Rent',V:'Vendor brings',H:'Venue provides',B:'Buy',L:'Borrow'};
@@ -28,6 +28,8 @@ const EQ_CATALOG = {
   'Food & bar':['Chafing dishes and Sternos','Floor protection mats','Coolers and ice','Serving tables','Compostable plates and napkins','Menu board','Trash and recycling bins'],
   'Signage & decor':['Event banner','Wayfinding signs','Easels','Table numbers','Centerpieces','Tablecloths'],
   'Safety':['First aid kit','Fire extinguisher check','Rope and stanchions','Flashlights','Two-way radios','Barricades'],
+  'Tables & chairs':['6 ft tables','8 ft tables','Round tables','Folding chairs','Cocktail tables','Table covers'],
+  'Tents & shelter':['10×10 pop-up tents','Tent weights','Stage canopy','Rain tarps'],
   'Media':['Camera','Tripod','Spare batteries and cards','Photo release sign'],
   'Supplies':['Gaffer tape','Zip ties','Extension cords','Tool kit','Table skirts','Paper towels']
 };
@@ -36,20 +38,34 @@ const LAYOUT_PIECES = {
   stage:{label:'Stage module',w:6,h:4,sub:'4×6 ft'}, table6:{label:'6 ft table',w:6,h:2.5,sub:'6×2.5 ft'}, table8:{label:'8 ft table',w:8,h:2.5,sub:'8×2.5 ft'},
   round:{label:'Round table',w:5,h:5,sub:'5 ft',round:true}, bar:{label:'Bar',w:8,h:3,sub:'8×3 ft'}, speaker:{label:'Speaker',w:2,h:2,sub:'2×2 ft'},
   booth:{label:'Vendor booth',w:10,h:10,sub:'10×10 ft'}, chairs:{label:'Chair row',w:10,h:1.5,sub:'10 ft row'}, door:{label:'Entrance / exit',w:5,h:1,sub:'5 ft'},
-  zone:{label:'Zone',w:12,h:8,sub:'Roped area',zone:true}, label:{label:'Label',w:8,h:2,sub:'Text only',text:true}
+  zone:{label:'Zone',w:12,h:8,sub:'Roped area',zone:true}, label:{label:'Label',w:8,h:2,sub:'Text only',text:true},
+  // [beta] festival pieces, and a custom one you name and size yourself
+  food:{label:'Food booth',w:10,h:10,sub:'10×10 ft',group:'g-food'}, retail:{label:'Retail booth',w:10,h:10,sub:'10×10 ft',group:'g-retail'},
+  info:{label:'Info booth',w:10,h:10,sub:'10×10 ft',group:'g-info'}, truck:{label:'Food truck',w:20,h:8,sub:'20×8 ft',group:'g-food'},
+  kids:{label:'Kids area',w:20,h:20,sub:'Roped area',zone:true}, bounce:{label:'Bounce house',w:15,h:15,sub:'15×15 ft'},
+  tent:{label:'Tent',w:10,h:10,sub:'10×10 ft'}, custom:{label:'Custom',w:10,h:10,sub:'Name and size it',custom:true}
 };
 
 function buildTemplate(o){
-  const ms = (o.ms||[]).map(([title,offset,ph,hard,desc]) => ({id:uid(),title,offset,phase:PHASES[(ph||4)-1],owner:'',hard:!!hard,status:'todo',desc:desc||'',checklist:[]}));
+  // [beta] a deadline can carry checklist steps with their own day: [[text, days-before-show], ...]
+  const ms = (o.ms||[]).map(([title,offset,ph,hard,desc,steps]) => ({id:uid(),title,offset,phase:PHASES[(ph||4)-1],owner:'',hard:!!hard,status:'todo',desc:desc||'',checklist:(steps||[]).map(([text,off]) => ({id:uid(),text,done:false,offset:off==null?null:off}))}));
   const setup = (o.setup||[]).map(([title,start,end,tr,a]) => ({id:uid(),title,start,end,track:TRACKS[tr-1],audiences:aud(a),notes:''}));
   const items = (o.prog||[]).map(([title,dur,who,a]) => ({id:uid(),title,who:who||'',dur,audiences:aud(a||'IP'),notes:''}));
   const compliance = (o.cp||[]).map(([item,owner,offset,notes]) => ({id:uid(),item,owner:owner||'',offset,status:'needed',expires:'',notes:notes||'',files:[]}));
   const equipment = (o.eq||[]).map(([item,cat,qty,src]) => ({id:uid(),item,cat,qty:qty||1,source:SRCMAP[src]||'Owned',owner:'',status:'needed',notes:''}));
   // Budget lines: [item, category, 'c' for a cost or 'i' for income]. Amounts start blank.
   const budget = (o.bud||BUD_DEFAULT).map(([item,cat,k]) => budgetLine(k === 'i' ? 'income' : 'cost', cat, item));
-  return {kind:o.kind||'organizer', doors:o.doors, end:o.end, milestones:ms, setup, program:{start:o.progStart||o.doors, items}, compliance, equipment, budget, budgetTotal:'',
+  const ev = {kind:o.kind||'organizer', doors:o.doors, end:o.end, milestones:ms, setup, program:{start:o.progStart||o.doors, items}, compliance, equipment, budget, budgetTotal:'',
     contacts:[{id:uid(),role:o.kind==='venue'?'Venue manager':'Event lead',name:'',org:'',phone:'',email:'',audiences:['Internal','Performers','Vendors','Venue','Security'],showPhone:true,invoiceUrl:'',remind:true,team:true}],
     houseRules:o.rules||[], layout:{image:'',pins:[],room:{w:o.room?o.room[0]:60,d:o.room?o.room[1]:80},pieces:[]}};
+  // [beta] templates with their own groups (the festival): "Vendors" tags go to every vendor group
+  if(o.groups === 'festival'){
+    ev.groups = clone(FESTIVAL_GROUPS);
+    const vend = ev.groups.filter(g => g.vendor).map(g => g.id);
+    const remap = list => [...new Set((list||[]).flatMap(a => a === 'Vendors' ? vend : [a]))];
+    ev.setup.forEach(x => x.audiences = remap(x.audiences)); ev.program.items.forEach(x => x.audiences = remap(x.audiences)); ev.contacts.forEach(x => x.audiences = remap(x.audiences));
+  }
+  return ev;
 }
 
 /* A new, empty budget line. kind is 'cost' or 'income'. */
@@ -105,8 +121,8 @@ const TEMPLATES = [
   prog:[['Doors and sign-up',30,'','IPV'],['Host welcome',5,'','IP'],['Readers, block 1',45,'','IP'],['Break',10,'','IPV'],['Featured reader',15,'','IP'],['Readers, block 2',30,'','IP'],['Close',5,'','IP']],
   cp:[['Venue OK and any room fee','',-30]],
   eq:[['Vocal mics','Audio',1,'O'],['Mic stands','Audio',1,'O'],['Small PA speaker','Audio',1,'O'],['Sign-up sheet and pens','Front of house',1,'B'],['Timer','Supplies',1,'O'],['Reading lamp','Stage & lighting',1,'L']]},
- {key:'festival',label:'Community festival / street fair',scale:'Large',desc:'Street closure, stage, dozens of vendors, city permits.',doors:'11:00',end:'19:00',progStart:'11:00',room:[120,300],
-  ms:[['City special event permit application',-120,1,true],['Vendor applications open',-100,1],['Street closure, police and fire review',-90,1],['Vendor selection and fees',-75,1],['Stage, tent and toilet rentals booked',-60,2],
+ {key:'festival',label:'Community festival / street fair',scale:'Large',desc:'Street closure, stage, dozens of vendors, city permits. Comes with groups for food, retail, info booths and artisans.',doors:'11:00',end:'19:00',progStart:'11:00',room:[120,300],groups:'festival',
+  ms:[['City special event permit application',-120,1,true],['Vendor applications open',-100,1],['Street closure: city, police and fire',-2,1,true,'One task for the whole street closure. Each step has its own date and reminder.',[['Tell the city about the closure (they need a month’s notice)',-30],['Contact the police',-30],['Contact the fire department',-30],['Confirm with the city where and when barricades get dropped off',-2]]],['Vendor selection and fees',-75,1],['Stage, tent and toilet rentals booked',-60,2],
    ['Insurance certificate naming the city',-60,1],['Sponsor commitments due',-45,3],['Launch promotion',-45,3,true],['Volunteer recruitment and roles',-30,4],['Site map final',-21,2,true],['Vendor load-in schedule sent',-10,4],['Walkthrough with city',-3,4]],
   setup:[['Barricades and street closure','07:00','08:00',3,'INS'],['Tents, stage and power','08:00','10:00',1,'IN'],['Vendor load-in','08:00','10:30',2,'IVN'],['Sound check','10:00','10:45',4,'IP'],['Volunteer briefing','10:30','11:00',3,'IS']],
   prog:[['Gates open',30,'','IPVS'],['Welcome and sponsor thanks',15,'','IP'],['Act 1',45,'','IP'],['Act 2',45,'','IP'],['Community showcase',60,'','IP'],['Act 3',60,'','IP'],['Headliner',60,'','IP'],['Closing',15,'','IPVS']],

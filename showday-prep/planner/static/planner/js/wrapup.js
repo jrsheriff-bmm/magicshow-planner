@@ -23,7 +23,7 @@ function wrapupStats(ev){
     else if(m.status !== 'done') open.push({title:m.title, owner:m.owner});
   });
   const tracked = ev.milestones.filter(m => m.status === 'done' && isYMD(m.doneAt)).length;
-  return {attendance, target:Number(ev.target)||null, cost, income, net:income - cost, perHead: attendance ? cost / attendance : null,
+  return {attendance, target:ev.noHeadcount ? null : Number(ev.target)||null, cost, income, net:income - cost, perHead: attendance ? cost / attendance : null,
     late, open, tracked, onTime: tracked - late.length, rating:Number(W.rating)||null, cap:B.cap};
 }
 
@@ -36,16 +36,17 @@ function wrapupHTML(ev){
 
   const tile = (label, val, sub, color) => '<div class="stat"><span>'+label+'</span><b class="mono"'+(color?' style="color:'+color+'"':'')+'>'+val+'</b><span>'+(sub||'')+'</span></div>';
   h += '<div class="stats">';
-  h += tile('Attendance', X.attendance != null ? X.attendance : '—', X.target ? 'target '+X.target+(X.attendance != null ? ' ('+Math.round(X.attendance/X.target*100)+'%)' : '') : 'no target set');
+  if(ev.noHeadcount && X.attendance == null) h += tile('Attendance', 'Not counted', 'open entry: attendance isn’t tracked');   // [beta]
+  else h += tile('Attendance', X.attendance != null ? X.attendance : '—', X.target ? 'target '+X.target+(X.attendance != null ? ' ('+Math.round(X.attendance/X.target*100)+'%)' : '') : 'no target set');
   h += tile('Final cost', usd(X.cost), X.cap ? (X.cost > X.cap ? usd(X.cost - X.cap)+' over budget' : usd(X.cap - X.cost)+' under budget') : 'from the Budget tab', X.cap && X.cost > X.cap ? 'var(--crit)' : null);
   h += tile('Income', usd(X.income), hasAmt(W.ticketsSold) ? W.ticketsSold+' tickets sold' : '');
   h += tile('Net', usd(X.net), 'income minus cost', X.net < 0 ? 'var(--crit)' : X.net > 0 ? 'var(--good)' : null);
-  h += tile('Cost per attendee', X.perHead != null ? usd(Math.round(X.perHead*100)/100) : '—', 'final cost ÷ attendance');
+  if(!(ev.noHeadcount && X.attendance == null)) h += tile('Cost per attendee', X.perHead != null ? usd(Math.round(X.perHead*100)/100) : '—', 'final cost ÷ attendance');
   h += '</div>';
 
   const num = (k, label, hint) => '<div class="field"><label for="w-'+k+'">'+label+'</label><input id="w-'+k+'" type="number" min="0" data-wrap="'+k+'" value="'+esc(W[k])+'"'+ro()+'>'+(hint?'<span class="hint">'+hint+'</span>':'')+'</div>';
   h += '<div class="panel"><div class="panel-head"><div><h2>How it went</h2><p class="hint">The numbers and the lessons. Next year’s planning starts here.</p></div>'+(W.completedAt?'<button class="btn small ghost" data-act="wrapDone" data-v="0"'+ro()+'>Reopen</button>':'<button class="btn primary small" data-act="wrapDone" data-v="1"'+ro()+'>Mark wrap-up finished</button>')+'</div><div class="facts">';
-  h += num('attendance','Attendance','Headcount through the door.') + num('ticketsSold','Tickets sold','Used for income if you didn’t enter ticket amounts in Budget.');
+  h += num('attendance','Attendance', ev.noHeadcount ? 'This event doesn’t count attendance. Leave blank, or enter a rough estimate.' : 'Headcount through the door.') + num('ticketsSold','Tickets sold','Used for income if you didn’t enter ticket amounts in Budget.');
   h += '<div class="field"><span class="lbl">Overall rating</span><div class="stars" role="group" aria-label="Overall rating">'+[1,2,3,4,5].map(n => '<button class="star" data-act="wrapRate" data-v="'+n+'" aria-pressed="'+(Number(W.rating) >= n)+'" aria-label="'+n+' of 5"'+ro()+'>★</button>').join('')+'</div></div>';
   h += '<div class="field wide"><label for="w-worked">What worked</label><textarea id="w-worked" rows="3" data-wrap="worked" placeholder="Keep doing these"'+ro()+'>'+esc(W.worked)+'</textarea></div>';
   h += '<div class="field wide"><label for="w-change">Change next time</label><textarea id="w-change" rows="3" data-wrap="change" placeholder="One idea per line. These roll up into the Past events report."'+ro()+'>'+esc(W.change)+'</textarea></div>';

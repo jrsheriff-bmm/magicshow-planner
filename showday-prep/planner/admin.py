@@ -20,8 +20,8 @@ class MembershipInline(admin.TabularInline):
 
 @admin.register(models.Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ["name", "plan", "support_access", "kind", "retainer_hours", "hourly_rate", "created_at"]
-    list_filter = ["plan", "support_access"]
+    list_display = ["name", "city", "plan", "support_access", "discoverable", "personal", "retainer_hours", "created_at"]
+    list_filter = ["plan", "support_access", "discoverable", "personal"]
     search_fields = ["name"]
     inlines = [MembershipInline]
 
@@ -141,3 +141,24 @@ class TimeEntryAdmin(admin.ModelAdmin):
     list_display = ["date", "hours", "cat", "note", "who", "org"]
     list_filter = ["org", "cat"]
     date_hierarchy = "date"
+
+
+
+# [beta] Organizations, invites and the testing program
+@admin.register(models.JoinRequest)
+class JoinRequestAdmin(admin.ModelAdmin):
+    list_display = ["user", "org", "status", "created_at", "decided_at"]
+    list_filter = ["status"]
+
+
+@admin.register(models.OrgInvite)
+class OrgInviteAdmin(admin.ModelAdmin):
+    list_display = ["org", "role", "uses", "expires_at", "revoked", "created_by"]
+    list_filter = ["revoked", "role"]
+
+
+@admin.register(models.UsageEvent)
+class UsageEventAdmin(admin.ModelAdmin):
+    list_display = ["created_at", "kind", "name", "screen", "user", "org"]
+    list_filter = ["kind"]
+    search_fields = ["name", "screen", "detail"]

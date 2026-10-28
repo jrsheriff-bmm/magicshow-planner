@@ -62,6 +62,8 @@ Say you drag the deadline "Submit venue application" into the **Done** column.
 | `planner/ai.py` | The Reports page's optional AI status summary | To change what the AI writes |
 | `planner/accounts.py` | *(final)* Sign-up, change password, reset password | To change who can sign up or what the form asks |
 | `planner/auth.py` | *(final)* Lets people log in with their email | Rarely |
+| `planner/teams.py` | *(beta)* Organizations: creating one, search, join requests and owner approval, members and roles, invite links, the `/join/<code>/` page | To change who can join or what owners can do |
+| `planner/testing.py` | *(beta)* The usage log (`/api/telemetry/`), the Testing report and the feedback inbox | To change what the report shows |
 | `planner/budget.py` | *(v3)* Budget totals in Python, for checks and AI | Rarely |
 | `planner/reminders.py` | *(v3)* **Who gets which reminder email, and when.** Same rules as the preview on screen. Also "Mark done" | To change reminder timing |
 | `planner/emails.py` | *(v3)* Builds and sends the reminder and approval emails | To change email wording |
@@ -92,6 +94,13 @@ All in `planner/static/planner/`. They load in this order:
 | `js/reports.js` | *(v3)* The Reports page (current and past events) |
 | `js/library.js` | *(v3)* Your templates, "Add from templates", and "Download by person" |
 | `js/hours.js` | *(v4)* The Hours page and the client workspace switcher |
+| `js/exports.js` | *(final)* Budget to Excel and CSV, and the layout drawn into PDFs |
+| `js/account.js` | *(final)* The Account pop-up and support access |
+| `js/help.js` | *(beta)* The small **?** help buttons (`help('phase')`), the Help guide, and "Getting started" on the home page |
+| `js/groups.js` | *(beta)* An event's own groups, Group lists, "Import a list" (CSV and Excel), "Email the group", step progress bars, booth labels |
+| `js/series.js` | *(beta)* The series strip and Series page; hiding tabs and an event's own notes tabs |
+| `js/team.js` | *(beta)* The Team page, asking to join, invite links, "+ New organization", "Assigned to you" |
+| `js/testing.js` | *(beta)* The usage log sent to `/api/telemetry/`, "How easy was that?", and the Testing report |
 | `js/boot.js` | *(v3)* Starts the app. Must load last |
 
 **Two patterns to recognize** (they're everywhere):

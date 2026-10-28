@@ -15,6 +15,12 @@ the .env file, or your host's environment variables):
 
 With neither set, anyone can create an account.
 
+[beta] Everyone gets a personal workspace for their own events. If they type an
+organization's name, we create that organization with them as its owner, unless
+organizations with that name already exist: then the app offers to "Ask to join"
+instead (see planner/teams.py). An invite link (/join/<code>/) brings people back
+here with ?next=, and they join right after signing up.
+
 Retainer clients tick one box when they sign up (or switch it on later under Account):
 "Let the Blackmagic Media team into my workspace". See planner/access.py.
 """
@@ -30,6 +36,7 @@ from django.core.validators import validate_email
 from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import redirect, render
+from django.utils.http import url_has_allowed_host_and_scheme
 from django.urls import reverse_lazy
 from django.views.decorators.cache import never_cache
 from django.views.decorators.debug import sensitive_post_parameters
@@ -66,9 +73,14 @@ def _too_many(request):
 @never_cache
 @require_http_methods(["GET", "POST"])
 def signup(request):
+    nxt = request.POST.get("next") or request.GET.get("next") or ""
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        nxt = ""
     if request.user.is_authenticated:
-        return redirect("app")
-    ctx = {"open": signup_open(), "needs_code": bool(signup_code()), "team": access.SUPPORT_TEAM, "v": {}, "errors": {}}
+        return redirect(nxt or "app")
+    invited = nxt.startswith("/join/")
+    ctx = {"open": signup_open() or invited, "needs_code": bool(signup_code()) and not invited, "team": access.SUPPORT_TEAM,
+           "v": {}, "errors": {}, "next": nxt, "invited": invited}
     if request.method != "POST" or not ctx["open"]:
         return render(request, "planner/auth/signup.html", ctx)
 
@@ -105,22 +117,34 @@ def signup(request):
         ctx.update(v=v, errors=errors)
         return render(request, "planner/auth/signup.html", ctx, status=400)
 
+    from .teams import create_org
     with transaction.atomic():
         user = User.objects.create_user(username=email, email=email, password=password,
                                         first_name=first[:150], last_name=last.strip()[:150])
-        org = Organization.objects.create(
-            name=(v["org"] or f"{first}'s events")[:200],
-            plan="retainer" if v["retainer"] else "subscription", support_access=v["retainer"])
-        Membership.objects.create(user=user, org=org, role="owner")
-        access.apply_support(org)
+        # [beta] Everyone's own space for their own events
+        personal = Organization.objects.create(name=f"{first}'s events"[:200], plan="subscription", personal=True, discoverable=False)
+        Membership.objects.create(user=user, org=personal, role="owner")
+        org, suggest = personal, ""
+        if v["org"]:
+            exists = Organization.objects.filter(name__iexact=v["org"], discoverable=True, personal=False).exists()
+            if exists and not invited:
+                suggest = v["org"]          # the app offers "Ask to join" for the matching organizations
+            elif not invited:
+                org = create_org(user, v["org"])
+        if v["retainer"]:
+            org.plan, org.support_access = "retainer", True
+            org.save(update_fields=["plan", "support_access"])
+            access.apply_support(org)
     login(request, user, backend="django.contrib.auth.backends.ModelBackend")
     request.session["org_id"] = org.id
+    if suggest:
+        request.session["suggest_join"] = suggest
     try:   # the account exists either way; emails are a courtesy
         emails.send_welcome(user, org, emails.site_url(request))
         emails.send_signup_notice(user, org, emails.site_url(request))
     except Exception:
         log.exception("Sign-up emails failed")
-    return redirect("app")
+    return redirect(nxt or "app")
 
 
 class PasswordChange(auth_views.PasswordChangeView):

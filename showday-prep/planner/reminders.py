@@ -6,6 +6,8 @@ so the preview on the "Calendar & reminders" tab shows exactly what goes out:
 
   • Deadlines and paperwork: the owner gets an email 7 days before and 1 day
     before the due date (paperwork only until it's marked Submitted).
+  • [beta] Checklist steps with their own due day follow the same rule, and go
+    to the deadline's owner. Each has its own "Mark done" button.
     Overdue: once the day after, then once a week. Never every day.
   • Show day: everyone with an email gets their itinerary link 7 days and
     1 day before the show.
@@ -75,12 +77,21 @@ def done_link(kind, event, item_id, base):
     return f"{base}/done/{done_token(kind, event.id, item_id)}/"
 
 
+def open_steps(event, m):
+    """[beta] A deadline's checklist steps that have their own due day and aren't done: [(step, due date)]."""
+    if m.status == "done":
+        return []
+    return [(st, due_date(event, st["offset"])) for st in (m.checklist or []) if st.get("offset") is not None and not st.get("done")]
+
+
 def last_active_day(event):
     """[v4] Show day, or a later open deadline (editing, delivery, a payment), whichever is last."""
     last = event.date
     for m in event.milestones.all():
         if m.status != "done":
             last = max(last, due_date(event, m.offset))
+            for _, d in open_steps(event, m):
+                last = max(last, d)
     for p in event.compliance_items.all():
         if p.status == "needed":
             last = max(last, due_date(event, p.offset))
@@ -121,6 +132,11 @@ def plan_for_day(event, day, base):
         if tag and reachable(c):
             add(c, c.email, {"kind": "Deadline", "tag": tag, "text": m.title, "due": due,
                              "action": done_link("m", event, m.id, base), "action_label": "Mark done"})
+        for st, sdue in open_steps(event, m):   # [beta]
+            stag = reminder_tag((sdue - day).days)
+            if stag and reachable(c):
+                add(c, c.email, {"kind": "Step", "tag": stag, "text": f"{st.get('text')} (part of “{m.title}”)", "due": sdue,
+                                 "action": done_link("s", event, f"{m.id}.{st.get('id')}", base), "action_label": "Mark step done"})
 
     for p in event.compliance_items.all():
         if p.status != "needed":
@@ -140,7 +156,8 @@ def plan_for_day(event, day, base):
                 continue
             groups = [a for a in (c.audiences or []) if a != "Internal"]
             if groups:
-                add(c, c.email, {"kind": "Show", "tag": label, "text": f"Your {groups[0]} itinerary for {event.name}",
+                from .serializers import group_name
+                add(c, c.email, {"kind": "Show", "tag": label, "text": f"Your {group_name(event, groups[0])} itinerary for {event.name}",
                                  "due": None, "action": share_link(event, groups[0], base), "action_label": "Open your itinerary"})
             elif "Internal" in (c.audiences or []):
                 add(c, c.email, {"kind": "Show", "tag": label, "text": f"{event.name}: full plan",
@@ -171,6 +188,9 @@ def plan_for_day(event, day, base):
             due = due_date(event, m.offset)
             if m.status != "done" and (due - day).days <= 7:
                 soon.append({"tag": "Overdue" if due < day else "This week", "text": m.title + (f" ({m.owner})" if m.owner else "")})
+            for st, sdue in open_steps(event, m):
+                if (sdue - day).days <= 7:
+                    soon.append({"tag": "Overdue" if sdue < day else "This week", "text": f"Step: {st.get('text')} ({m.title})"})
         for p in event.compliance_items.all():
             due = due_date(event, p.offset)
             if p.status != "approved" and (due - day).days <= 7:
@@ -205,7 +225,20 @@ def plan_for_org(events, day, base):
 # "Mark done" from an email or the My tasks page
 # ---------------------------------------------------------------------------
 
+class StepRef:
+    """[beta] One checklist step, so "Mark done" can treat it like any other item."""
+
+    def __init__(self, milestone, step):
+        self.milestone, self.step, self.event = milestone, step, milestone.event
+        self.owner_ref = milestone.owner_ref
+
+
 def find_item(event, kind, item_id):
+    if kind == "s":
+        mid, _, sid = str(item_id).partition(".")
+        m = event.milestones.filter(pk=mid).first()
+        step = next((st for st in (m.checklist or []) if st.get("id") == sid), None) if m else None
+        return StepRef(m, step) if step else None
     if kind == "m":
         return event.milestones.filter(pk=item_id).first()
     if kind == "c":
@@ -216,10 +249,14 @@ def find_item(event, kind, item_id):
 
 
 def item_label(kind, item):
+    if kind == "s":
+        return f"{item.step.get('text')} (part of “{item.milestone.title}”)"
     return {"m": lambda i: i.title, "c": lambda i: i.item, "b": lambda i: i.item or i.cat}[kind](item)
 
 
 def is_done(kind, item):
+    if kind == "s":
+        return bool(item.step.get("done")) or item.milestone.status == "done"
     return {"m": item.status == "done", "c": item.status in ("submitted", "approved"), "b": item.status == "paid"}[kind]
 
 
@@ -227,6 +264,16 @@ def mark_done(kind, item):
     """Deadline → Done (with today's date). Paperwork → Submitted. Payment → Paid. Returns True if it changed."""
     if is_done(kind, item):
         return False
+    if kind == "s":
+        m = item.milestone
+        for st in m.checklist:
+            if st.get("id") == item.step.get("id"):
+                st["done"] = True
+        if m.status == "todo":
+            m.status = "doing"   # someone is working on it
+        m.save(update_fields=["checklist", "status"])
+        m.event.save(update_fields=["updated_at"])
+        return True
     if kind == "m":
         item.status, item.done_at = "done", date.today()
         item.save(update_fields=["status", "done_at"])

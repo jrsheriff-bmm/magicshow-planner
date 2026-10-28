@@ -46,6 +46,27 @@ Updating a running v2 site? Follow **[docs/06-update-to-v3.md](docs/06-update-to
 | **Account pop-up**: your name, email, password, the workspace's name | Left menu → Account |
 | *Removed:* the per-event AI meeting summary. Every part of the plan downloads instead | |
 
+## New in the beta
+
+The 13 changes from the first beta session, in the order they were ranked. Updating from an
+earlier version? Follow **[docs/10-update-to-beta.md](docs/10-update-to-beta.md)**.
+
+| Feature | Where |
+|---|---|
+| **Checklist steps with their own dates and reminders**, and a progress bar on each card | Deadlines → open a card |
+| **Feedback inbox and error capture**: notes sent to the MagicShow team, errors the page hits | Notes button; Testing report |
+| **Plain-language help**: a ? beside confusing labels, a Help guide, a Getting started list | Everywhere; Help (left menu) |
+| **Your own groups** (Food vendors, Retail, Info booths…) instead of the fixed four | Share pages → Edit groups |
+| **Import a list** from Jotform or Excel, and **email a group its itinerary**. Vendors live on Group lists, not in People | People → Group lists; Share pages |
+| **Layout**: festival pieces, custom pieces, booths colored by group, who's in each booth, a warning when booths bunch up | Layout |
+| **Organizations**: personal workspaces, ask to join with owner approval, invite links, members in every Owner box | Team (left menu) |
+| **Series**: links to the events before and after, "Add next in series", a Series page | Under each event's title |
+| **Contact tags** and a tag filter | Contacts |
+| **Usage log and weekly Testing report** (Blackmagic team only) | Testing report (left menu) |
+| **"We don't count attendance"** for open events | Overview |
+| **Ticketing fees and vendor fees** paid or still owed | Budget; Group lists |
+| **Your own tabs**: hide unused tabs, add notes tabs | "Tabs" on each event |
+
 ## Start here
 
 Read these in order. Each one assumes nothing beyond the one before it.
@@ -61,6 +82,7 @@ Read these in order. Each one assumes nothing beyond the one before it.
 | [docs/07-update-to-v4.md](docs/07-update-to-v4.md) | Updating v3 to v4: client workspaces, Hours, consulting templates | About 20 minutes |
 | [docs/08-update-to-final.md](docs/08-update-to-final.md) | Updating to the final version: accounts and sign-up, support access, the new downloads | About 30 minutes |
 | [docs/09-run-on-your-own-server.md](docs/09-run-on-your-own-server.md) | Putting the site on a virtual private server (Ubuntu, Postgres, Nginx, https) instead of Render | About 2 hours |
+| [docs/10-update-to-beta.md](docs/10-update-to-beta.md) | Updating to the beta: steps with dates, groups, list import and group email, organizations, the testing program | About 30 minutes |
 
 ## The short version (for someone who's done this before)
 
@@ -98,12 +120,14 @@ showday-prep/
 │   ├── ai.py                  the Reports page's optional AI status summary (Claude API)
 │   ├── accounts.py            sign up, change or reset a password (final)
 │   ├── auth.py                log in with an email address (final)
+│   ├── teams.py               organizations: Team page, join requests, invite links (beta)
+│   ├── testing.py             the usage log, the Testing report and the feedback inbox (beta)
 │   ├── budget.py              budget totals (v3)
 │   ├── reminders.py           who gets which reminder email, and "Mark done" (v3)
 │   ├── emails.py              building and sending emails (v3)
 │   ├── admin.py               the /admin/ back office
 │   ├── tests*.py              automatic checks (python manage.py test)
-│   ├── management/commands/   setup_org, import_prototype, send_reminders
+│   ├── management/commands/   setup_org, import_prototype, send_reminders, prune_usage
 │   ├── templates/             the HTML pages (app shell, share page, login, sign-up, email, My tasks, approvals)
 │   └── static/planner/        the screens: CSS and JavaScript
 ├── data/prototype-export.json your events and notes from the prototype
@@ -130,4 +154,5 @@ showday-prep/
 - Client workspaces, Hours and consulting templates (v4)
 - Sign-up, email log-in, password reset, and support access for retainer clients (final)
 - Budget to Excel/CSV, layout PDFs, drag-to-reorder and add-anywhere on the run of show (final)
-- 41 automatic tests
+- Dated checklist steps, custom groups, list import and group email, organizations with join requests and invite links, series, contact tags, custom tabs, ticketing and vendor fees, and a testing program with a feedback inbox (beta)
+- 51 automatic tests
