@@ -45,6 +45,8 @@ function reminderPlan(ev, fromYMD, days){
       const due = addDays(ev.date, Number(m.offset)||0), tag = reminderTag(diffDays(D, due));
       const r = ownerReach(ev, m.owner);
       if(tag && r.ok) add(D, r.contact.name || r.contact.org, r.contact.email, {kind:'Deadline', tag, text:m.title, due, done:true, id:m.id});
+      // [beta] checklist steps with their own date: same 7-day / 1-day / weekly-overdue rule, to the deadline's owner
+      if(r.ok) openSteps(ev, m).forEach(st => { const stag = reminderTag(diffDays(D, st.d)); if(stag) add(D, r.contact.name || r.contact.org, r.contact.email, {kind:'Step', tag:stag, text:st.text+' (part of “'+m.title+'”)', due:st.d}); });
     });
     ev.compliance.filter(c => c.status === 'needed').forEach(c => {
       const due = addDays(ev.date, Number(c.offset)||0), tag = reminderTag(diffDays(D, due));
@@ -56,7 +58,7 @@ function reminderPlan(ev, fromYMD, days){
       ev.contacts.filter(c => c.email && c.remind !== false).forEach(c => {
         const groups = (c.audiences||[]).filter(a => a !== 'Internal');
         const label = showDelta === 7 ? 'Show in one week' : 'Show tomorrow';
-        if(groups.length) add(D, c.name || c.org, c.email, {kind:'Show', tag:label, text:'Your '+groups[0]+' itinerary for '+ev.name, due:ev.date});
+        if(groups.length) add(D, c.name || c.org, c.email, {kind:'Show', tag:label, text:'Your '+gname(ev, groups[0])+' itinerary for '+ev.name, due:ev.date});
         else if((c.audiences||[]).includes('Internal')) add(D, c.name || c.org, c.email, {kind:'Show', tag:label, text:ev.name+': full plan', due:ev.date});
       });
     }
@@ -70,7 +72,7 @@ function reminderPlan(ev, fromYMD, days){
     });
     if(new Date(toUTC(D)).getUTCDay() === 1){
       const soon = [];
-      ev.milestones.filter(m => m.status !== 'done').forEach(m => { const due = addDays(ev.date, Number(m.offset)||0), dd = diffDays(D, due); if(dd <= 7) soon.push({kind:'Deadline', tag:dd < 0 ? 'Overdue' : 'This week', text:m.title+(m.owner?' ('+m.owner+')':''), due}); });
+      ev.milestones.filter(m => m.status !== 'done').forEach(m => { const due = addDays(ev.date, Number(m.offset)||0), dd = diffDays(D, due); if(dd <= 7) soon.push({kind:'Deadline', tag:dd < 0 ? 'Overdue' : 'This week', text:m.title+(m.owner?' ('+m.owner+')':''), due}); openSteps(ev, m).forEach(st => { if(diffDays(D, st.d) <= 7) soon.push({kind:'Step', tag:st.d < D ? 'Overdue' : 'This week', text:'Step: '+st.text+' ('+m.title+')', due:st.d}); }); });
       ev.compliance.filter(c => c.status !== 'approved').forEach(c => { const due = addDays(ev.date, Number(c.offset)||0), dd = diffDays(D, due); if(dd <= 7) soon.push({kind:'Paperwork', tag:dd < 0 ? 'Overdue' : 'This week', text:c.item, due}); });
       ev.budget.filter(b => b.kind === 'cost' && b.status !== 'paid' && isYMD(b.due) && diffDays(D, b.due) <= 7).forEach(b => soon.push({kind:'Payment', tag:diffDays(D,b.due) < 0 ? 'Overdue' : 'This week', text:b.item||b.cat, due:b.due}));
       if(soon.length) team.forEach(t => add(D, t.name, t.email, {kind:'Weekly summary', tag:'Monday summary', text:soon.length+' item'+(soon.length>1?'s':'')+' overdue or due this week', due:'', list:soon}));

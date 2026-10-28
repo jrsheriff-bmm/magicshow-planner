@@ -7,7 +7,7 @@ from django.urls import path
 from django.contrib.auth import views as auth_views
 from django.urls import reverse_lazy
 
-from . import accounts, api, views
+from . import accounts, api, teams, testing, views
 
 urlpatterns = [
     # Pages
@@ -45,10 +45,23 @@ urlpatterns = [
     path("api/events/<str:event_id>/person-link/<str:contact_id>/", api.person_link, name="api_person_link"),
     path("api/reports/ai-summary/", api.portfolio_ai, name="api_portfolio_ai"),
     # [v4]
-    path("api/orgs/", api.org_create, name="api_org_create"),
+    path("api/orgs/", teams.org_create, name="api_org_create"),
     path("api/orgs/switch/", api.org_switch, name="api_org_switch"),
     path("api/org/settings/", api.org_settings, name="api_org_settings"),
     path("api/hours/<str:entry_id>/", api.hour_detail, name="api_hour"),
     # [final]
     path("api/account/", api.account, name="api_account"),
+    # [beta] organizations, the testing program, group emails
+    path("join/<str:code>/", teams.join_page, name="join_page"),
+    path("api/orgs/search/", teams.org_search, name="api_org_search"),
+    path("api/orgs/<int:org_id>/join/", teams.org_join, name="api_org_join"),
+    path("api/org/team/", teams.team, name="api_team"),
+    path("api/org/requests/<int:request_id>/", teams.request_decide, name="api_request_decide"),
+    path("api/org/members/<int:user_id>/", teams.member, name="api_member"),
+    path("api/org/invites/", teams.invite_create, name="api_invite_create"),
+    path("api/org/invites/<str:code>/", teams.invite_revoke, name="api_invite_revoke"),
+    path("api/telemetry/", testing.telemetry, name="api_telemetry"),
+    path("api/testing/report/", testing.report, name="api_testing_report"),
+    path("api/testing/feedback/<str:note_id>/", testing.feedback_done, name="api_feedback_done"),
+    path("api/events/<str:event_id>/send-itinerary/", api.send_itinerary, name="api_send_itinerary"),
 ]

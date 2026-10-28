@@ -111,22 +111,31 @@ function budgetRows(ev){
       owed:owes ? Math.max(0, proj(b) - amt(b.paid)) : '', due:isYMD(b.due) ? b.due : '', status:statusLabel(COST_STATUS, b.status),
       files:(b.files||[]).map(f => f.name).join('; '), approval:ap ? statusLabel(APPROVAL_STATUS, ap.status)+(ap.approver ? ' ('+ap.approver+')' : '') : '', notes:b.notes||''};
   });
-  const income = ev.budget.filter(b => b.kind === 'income').map(b => ({cat:b.cat, item:b.item, est:n(b.est), actual:n(b.actual), proj:hasAmt(b.est)||hasAmt(b.actual) ? proj(b) : '', status:statusLabel(INCOME_STATUS, b.status), notes:b.notes||''}));
-  if(B.useTicketProjection) income.unshift({cat:'Tickets', item:'Projected: '+ev.target+' tickets × '+usd(ev.priceAdv), est:B.ticketsProjected, actual:'', proj:B.ticketsProjected, status:'Automatic', notes:'Target headcount × advance price. Add a Tickets line in the app to replace it.'});
-  return {B, costs, income};
+  // [beta] income shows the fees a ticketing site keeps, and what reaches you after them
+  const roster = ev.contacts.filter(c => c.roster && hasAmt(c.fee));
+  const income = ev.budget.filter(b => b.kind === 'income' && !(roster.length && b.cat === 'Vendor fees')).map(b => ({cat:b.cat, item:b.item, est:n(b.est), actual:n(b.actual), fees:n(b.fees), proj:hasAmt(b.est)||hasAmt(b.actual) ? proj(b) - amt(b.fees) : '', status:statusLabel(INCOME_STATUS, b.status), notes:b.notes||''}));
+  if(B.useTicketProjection) income.unshift({cat:'Tickets', item:'Projected: '+ev.target+' tickets × '+usd(ev.priceAdv), est:B.ticketsProjected, actual:'', fees:'', proj:B.ticketsProjected, status:'Automatic', notes:'Target headcount × advance price. Add a Tickets line in the app to replace it.'});
+  if(roster.length) income.push({cat:'Vendor fees', item:'From the group lists: '+roster.length+' vendor'+(roster.length>1?'s':''), est:B.vendorFees, actual:B.vendorPaid, fees:'', proj:B.vendorFees, status:B.vendorPaid >= B.vendorFees ? 'Received' : 'Partly received', notes:'Each vendor’s fee is on the Vendor fees sheet.'});
+  const vendors = roster.map(c => ({name:c.org || c.name || 'Unnamed', contact:c.org ? c.name : '', group:gname(ev, (c.audiences||[])[0]), booth:c.booth||'', fee:amt(c.fee), paid:!!c.feePaid, email:c.email||''}));
+  return {B, costs, income, vendors};
 }
 function budgetWorkbook(ev){
-  const {B, costs, income} = budgetRows(ev), M = v => ({v, s:'money'}), H = v => ({v, s:'head'});
+  const {B, costs, income, vendors} = budgetRows(ev), M = v => ({v, s:'money'}), H = v => ({v, s:'head'});
   const cN = costs.length, iN = income.length, cTot = cN + 2, iTot = iN + 2;   // the row each sheet's totals sit on
   const sum = (col, n, v) => ({v, s:'moneyTotal', f:'SUM('+col+'2:'+col+(n+1)+')'});
   const costSheet = {name:'Costs', freeze:1, widths:[22,34,24,13,13,13,13,13,14,13,30,24,30],
     rows:[['Category','Item','Paid to','Estimated','Actual','Projected','Paid','Still owed','Due','Status','Invoice files','Approval','Notes'].map(H)]
       .concat(costs.map(c => [c.cat, c.item, c.payee, M(c.est), M(c.actual), M(c.proj), M(c.paid), M(c.owed), {v:c.due, s:'date'}, c.status, c.files, c.approval, c.notes]))
       .concat(cN ? [[{v:'Total', s:'boldTotal'}, {s:'boldTotal'}, {s:'boldTotal'}, sum('D',cN,B.estCost), sum('E',cN,costs.reduce((a,c) => a + amt(c.actual), 0)), sum('F',cN,B.projCost), sum('G',cN,B.paid), sum('H',cN,B.owed)]] : [['No costs yet.']])};
-  const incSheet = {name:'Income', freeze:1, widths:[20,40,13,13,13,14,44],
-    rows:[['Source','Item','Expected','Received','Projected','Status','Notes'].map(H)]
-      .concat(income.map(c => [c.cat, c.item, M(c.est), M(c.actual), M(c.proj), c.status, c.notes]))
-      .concat(iN ? [[{v:'Total', s:'boldTotal'}, {s:'boldTotal'}, sum('C',iN,income.reduce((a,c) => a + amt(c.est), 0)), sum('D',iN,income.reduce((a,c) => a + amt(c.actual), 0)), sum('E',iN,B.projIncome)]] : [['No income yet.']])};
+  const incSheet = {name:'Income', freeze:1, widths:[20,40,13,13,13,14,16,44],
+    rows:[['Source','Item','Expected','Received','Fees kept','Reaches you','Status','Notes'].map(H)]
+      .concat(income.map(c => [c.cat, c.item, M(c.est), M(c.actual), M(c.fees), M(c.proj), c.status, c.notes]))
+      .concat(iN ? [[{v:'Total', s:'boldTotal'}, {s:'boldTotal'}, sum('C',iN,income.reduce((a,c) => a + amt(c.est), 0)), sum('D',iN,income.reduce((a,c) => a + amt(c.actual), 0)), sum('E',iN,income.reduce((a,c) => a + amt(c.fees), 0)), sum('F',iN,B.projIncome)]] : [['No income yet.']])};
+  const vN = vendors.length;
+  const venSheet = {name:'Vendor fees', freeze:1, widths:[30,22,18,10,13,8,30],
+    rows:[['Vendor','Contact','Group','Booth','Fee','Paid','Email'].map(H)]
+      .concat(vendors.map(v => [v.name, v.contact, v.group, v.booth, M(v.fee), v.paid ? 'Yes' : 'No', v.email]))
+      .concat([[{v:'Total', s:'boldTotal'}, {s:'boldTotal'}, {s:'boldTotal'}, {s:'boldTotal'}, sum('E',vN,B.vendorFees)], [{v:'Paid so far', s:'boldTotal'}, {s:'boldTotal'}, {s:'boldTotal'}, {s:'boldTotal'}, {v:B.vendorPaid, s:'moneyTotal', f:'SUMIF(F2:F'+(vN+1)+',"Yes",E2:E'+(vN+1)+')'}]])};
   // Summary numbers point at the other two sheets, so they stay right if someone edits the file.
   const ref = (ok, f, v) => ok ? {v, s:'money', f} : {v, s:'money'};
   const sumRows = [
@@ -143,17 +152,18 @@ function budgetWorkbook(ev){
   kv('paid', 'Paid so far', ref(cN, 'Costs!G'+cTot, B.paid));
   kv('owed', 'Still owed', ref(cN, 'Costs!H'+cTot, B.owed), 'Committed or invoiced, and not fully paid');
   if(B.cap) kv('left', 'Left to spend', {v:B.left, s:'money', f:'B'+at.cap+'-B'+at.cost});
-  kv('inc', 'Projected income', ref(iN, 'Income!E'+iTot, B.projIncome), B.useTicketProjection ? 'Includes projected ticket sales' : '');
+  kv('inc', 'Projected income', ref(iN, 'Income!F'+iTot, B.projIncome), (B.useTicketProjection ? 'Includes projected ticket sales. ' : '')+'After fees kept by ticketing sites');
+  if(vN) kv('ven', 'Vendor fees', M(B.vendorFees), usd(B.vendorPaid)+' paid by '+vendors.filter(v => v.paid).length+' of '+vN+' vendors');
   kv('rec', 'Received so far', M(B.received));
   kv('net', 'Projected net', {v:B.net, s:'money', f:'B'+at.inc+'-B'+at.cost}, 'Income minus costs');
   if(B.breakEven != null) kv('be', 'Break-even', B.breakEven, 'tickets at '+usd(ev.priceAdv)+' each'+(Number(ev.target) ? ' (target '+ev.target+')' : ''));
   sumRows.push([], [H('Costs by category'), H('Projected'), H('Share of costs')]);
   B.byCat.filter(c => c.proj > 0).sort((a,b) => b.proj - a.proj).forEach(c => sumRows.push([c.cat, M(c.proj), {v:B.projCost ? c.proj / B.projCost : 0, s:'pct'}]));
   if(!B.byCat.some(c => c.proj > 0)) sumRows.push([{v:'No amounts entered yet.', s:'muted'}]);
-  return [{name:'Summary', widths:[36,16,44], rows:sumRows}, costSheet, incSheet];
+  return [{name:'Summary', widths:[36,16,44], rows:sumRows}, costSheet, incSheet].concat(vN ? [venSheet] : []);
 }
 function budgetCSV(ev){
-  const {B, costs, income} = budgetRows(ev), L = [];
+  const {B, costs, income, vendors} = budgetRows(ev), L = [];
   L.push(['Event', ev.name||''], ['Date', fmtLong(ev.date)], ['Venue', ev.venue||''], ['Downloaded', fmtLong(todayYMD())], []);
   L.push(['SUMMARY'], ['Budget', B.cap || ''], ['Projected costs', B.projCost], ['Paid so far', B.paid], ['Still owed', B.owed]);
   if(B.cap) L.push(['Left to spend', B.left]);
@@ -162,9 +172,14 @@ function budgetCSV(ev){
   L.push([], ['COSTS'], ['Category','Item','Paid to','Estimated','Actual','Projected','Paid','Still owed','Due','Status','Invoice files','Approval','Notes']);
   costs.forEach(c => L.push([c.cat, c.item, c.payee, c.est, c.actual, c.proj, c.paid, c.owed, c.due, c.status, c.files, c.approval, c.notes]));
   L.push(['Total','','', B.estCost, costs.reduce((a,c) => a + amt(c.actual), 0), B.projCost, B.paid, B.owed]);
-  L.push([], ['INCOME'], ['Source','Item','Expected','Received','Projected','Status','Notes']);
-  income.forEach(c => L.push([c.cat, c.item, c.est, c.actual, c.proj, c.status, c.notes]));
-  L.push(['Total','', income.reduce((a,c) => a + amt(c.est), 0), income.reduce((a,c) => a + amt(c.actual), 0), B.projIncome]);
+  L.push([], ['INCOME'], ['Source','Item','Expected','Received','Fees kept','Reaches you','Status','Notes']);
+  income.forEach(c => L.push([c.cat, c.item, c.est, c.actual, c.fees, c.proj, c.status, c.notes]));
+  L.push(['Total','', income.reduce((a,c) => a + amt(c.est), 0), income.reduce((a,c) => a + amt(c.actual), 0), income.reduce((a,c) => a + amt(c.fees), 0), B.projIncome]);
+  if(vendors.length){
+    L.push([], ['VENDOR FEES'], ['Vendor','Contact','Group','Booth','Fee','Paid','Email']);
+    vendors.forEach(v => L.push([v.name, v.contact, v.group, v.booth, v.fee, v.paid ? 'Yes' : 'No', v.email]));
+    L.push(['Total','','','', B.vendorFees, 'Paid: '+B.vendorPaid]);
+  }
   // "﻿" at the start tells Excel the file is UTF-8, so names with accents show correctly.
   return '﻿' + L.map(r => r.map(csvCell).join(',')).join('\r\n');
 }
@@ -186,13 +201,15 @@ function layoutSections(ev){
   const L = ev.layout, out = [];
   if(hasRoom(ev)){
     const W = Number(L.room.w)||60, D = Number(L.room.d)||80, tally = new Map();
-    L.pieces.forEach(p => { const def = LAYOUT_PIECES[p.kind] || LAYOUT_PIECES.label, k = def.label + (p.label && !def.text ? ': '+p.label : def.text ? ': '+(p.label||'') : ''); tally.set(k, (tally.get(k)||0) + 1); });
+    L.pieces.filter(p => !p.group && !p.contactId).forEach(p => { const def = LAYOUT_PIECES[p.kind] || LAYOUT_PIECES.label, k = def.label + (p.label && !def.text ? ': '+p.label : def.text ? ': '+(p.label||'') : ''); tally.set(k, (tally.get(k)||0) + 1); });
+    // [beta] booths with a group or a vendor get their own list: who's where
+    const booths = L.pieces.filter(p => p.group || p.contactId).map(p => { const c = p.contactId && contactById(ev, p.contactId); return [pieceLabel(ev, p), p.group ? gname(ev, p.group) : '', c ? (c.org || c.name || '')+(c.booth ? ' · '+c.booth : '') : 'Open']; }).sort((a,b) => a[1].localeCompare(b[1]) || a[0].localeCompare(b[0]));
     const stages = L.pieces.filter(p => p.kind === 'stage').length;
     out.push({h:'Room layout', items:[
       {figure:'room', ev, wordNote:'The room drawing is in the PDF version of this file.'},
       {p:'Room: '+W+' ft wide by '+D+' ft deep ('+(W*D).toLocaleString('en-US')+' sq ft). Grid lines are every 5 ft.'+(stages ? ' Stage: '+stages+' module'+(stages>1?'s':'')+', '+(stages*24)+' sq ft of deck.' : '')},
       {table:{head:['Piece','How many'], widths:[.75,.25], rows:[...tally.entries()].map(([k,v]) => [k, String(v)])}}
-    ]});
+    ].concat(booths.length ? [{table:{head:['Booth','Group','Who is in it'], widths:[.34,.26,.4], rows:booths}}] : [])});
   }
   if(hasPlan(ev)){
     const who = p => { const c = p.contactId && ev.contacts.find(x => x.id === p.contactId); return c ? (c.name||'To confirm')+(c.role ? ' ('+c.role+')' : '') : ''; };
@@ -262,9 +279,10 @@ function drawRoom(pdf, ev, ox, y, z){
     else if(def.zone){ pdf.setFillColor(251,239,217); pdf.rect(px, py, w, h, 'F'); pdf.setDrawColor(164,95,0); pdf.setLineDashPattern([3,2], 0); pdf.rect(px, py, w, h, 'S'); pdf.setLineDashPattern([], 0); }
     else if(p.kind === 'door'){ pdf.setFillColor(30,127,85); pdf.rect(px, py, w, h, 'F'); ink = [255,255,255]; }
     else if(p.kind === 'stage' || p.kind === 'bar' || p.kind === 'speaker'){ pdf.setFillColor.apply(pdf, p.kind === 'stage' ? [90,59,194] : p.kind === 'bar' ? [180,83,26] : [92,86,111]); pdf.setDrawColor(255,255,255); pdf.rect(px, py, w, h, 'FD'); ink = [255,255,255]; }
+    else if(p.group && gindex(ev, p.group) >= 0){ const c = GROUP_RGB[gindex(ev, p.group) % GROUP_RGB.length]; pdf.setFillColor(Math.round(255 - (255-c[0])*.22), Math.round(255 - (255-c[1])*.22), Math.round(255 - (255-c[2])*.22)); pdf.setDrawColor(c[0], c[1], c[2]); pdf.rect(px, py, w, h, 'FD'); }   // [beta] booths tinted by group
     else { pdf.setFillColor(255,255,255); pdf.rect(px, py, w, h, 'FD'); }
     // the label, shrunk to fit and turned sideways on tall, narrow pieces (same rule as the screen)
-    const lbl = pdfSafe(p.label || def.label); if(!lbl) return;
+    const lbl = pdfSafe(def.text ? p.label : pieceLabel(ev, p)); if(!lbl) return;
     const vert = !def.round && !def.text && h > w*1.4, room = (vert ? h : w) - 2;
     let fs = def.text ? base*1.2 : Math.min(base, Math.max(.7*k, Math.max(w,h)/Math.max(4, lbl.length)*1.6));
     fs = Math.max(3.2, Math.min(fs, 14));

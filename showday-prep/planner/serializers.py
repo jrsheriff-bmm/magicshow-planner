@@ -7,6 +7,11 @@ The screens work with one JSON object per event, shaped exactly like the prototy
   event_to_dict(event)          database → JSON for the screens
   save_event_dict(org, data)    JSON from the screens → database
 
+The beta update adds: each event's own share-page groups, dated checklist steps,
+group lists (vendors imported from a spreadsheet) with fees, platform fees on
+income, booth groups in the layout, contact tags, custom tabs, and "attendance
+isn't counted".
+
 v3 adds: budget lines (with invoice files), approvals (read-only here: the
 server owns them, see api.py), wrap-up, "done on" dates, reminder settings,
 and your own templates.
@@ -22,7 +27,7 @@ from decimal import Decimal, InvalidOperation
 from django.db import transaction
 
 from .models import (
-    AUDIENCES, BudgetLine, ComplianceItem, EquipmentItem, Event, EventContact, EventFile, LayoutPiece,
+    AUDIENCES, DEFAULT_GROUPS, BudgetLine, ComplianceItem, EquipmentItem, Event, EventContact, EventFile, LayoutPiece,
     LayoutPin, Milestone, Note, OrgTemplate, Person, ProgramItem, SetupItem, TimeEntry,
 )
 import json
@@ -102,9 +107,56 @@ def text(v, limit=5000):
     return ("" if v is None else str(v))[:limit]
 
 
-def audiences(v):
-    """Keep only real audience names, in a clean list."""
-    return [a for a in (v or []) if a in AUDIENCES] if isinstance(v, list) else []
+def audiences(v, allowed=None):
+    """Keep only real group ids ("Internal" plus the event's groups), in a clean list."""
+    allowed = allowed or set(AUDIENCES)
+    return [a for a in dict.fromkeys(v or []) if a in allowed] if isinstance(v, list) else []
+
+
+def clean_groups(v):
+    """[beta] An event's share-page groups: [{"id", "name", "vendor"}]. Empty → the starting four."""
+    out, seen = [], set()
+    for g in (v if isinstance(v, list) else [])[:30]:
+        if not isinstance(g, dict):
+            continue
+        gid = clean_id(g.get("id"))
+        name = text(g.get("name"), 60).strip()
+        if not gid or gid == "Internal" or gid in seen or len(gid) > 30 or not name:
+            continue
+        seen.add(gid)
+        out.append({"id": gid, "name": name, "vendor": bool(g.get("vendor"))})
+    return out or [dict(g) for g in DEFAULT_GROUPS]
+
+
+def group_name(event, gid):
+    """The name people see for a group id (the id itself for the starting groups)."""
+    if gid == "Internal":
+        return "Internal"
+    for g in (event.groups or DEFAULT_GROUPS):
+        if g.get("id") == gid:
+            return g.get("name") or gid
+    return gid
+
+
+def clean_steps(rows):
+    """[beta] A deadline's checklist. Each step may have its own due day (offset from show day)."""
+    out = []
+    for c in (rows or [])[:100]:
+        if not isinstance(c, dict):
+            continue
+        off = c.get("offset")
+        out.append({"id": text(c.get("id"), 40), "text": text(c.get("text"), 500), "done": bool(c.get("done")),
+                    "offset": None if off in ("", None) else max(-3650, min(3650, to_int(off, 0)))})
+    return out
+
+
+def clean_tabs(v):
+    """[beta] Notes tabs added to one event: [{"id", "name", "body"}]."""
+    out = []
+    for t in (v if isinstance(v, list) else [])[:12]:
+        if isinstance(t, dict) and clean_id(t.get("id")):
+            out.append({"id": clean_id(t.get("id")), "name": text(t.get("name"), 60).strip() or "Notes", "body": text(t.get("body"), 50000)})
+    return out
 
 
 def clean_id(v):
@@ -162,16 +214,20 @@ def event_to_dict(e):
         "aiSummary": e.ai_summary,
         "budgetTotal": num_out(e.budget_total),
         "wrapup": e.wrapup or {},
+        "groups": e.groups or [dict(g) for g in DEFAULT_GROUPS],
+        "noHeadcount": e.no_headcount,
+        "customTabs": e.custom_tabs or [],
+        "hiddenTabs": e.hidden_tabs or [],
         "milestones": [
             {"id": m.id, "title": m.title, "desc": m.desc, "offset": m.offset, "phase": m.phase,
              "owner": m.owner, "ownerId": m.owner_ref, "hard": m.hard, "status": m.status,
-             "doneAt": d2s(m.done_at), "checklist": m.checklist or []}
+             "doneAt": d2s(m.done_at), "checklist": [dict({"offset": None}, **c) for c in (m.checklist or [])]}
             for m in e.milestones.all()
         ],
         "budget": [
             {"id": b.id, "kind": b.kind, "cat": b.cat, "item": b.item, "payee": b.payee, "payeeId": b.payee_ref,
              "est": num_out(b.est), "actual": num_out(b.actual), "paid": num_out(b.paid), "due": d2s(b.due),
-             "status": b.status, "notes": b.notes, "files": [file_to_dict(f) for f in b.files.all()]}
+             "status": b.status, "notes": b.notes, "fees": num_out(b.fees), "files": [file_to_dict(f) for f in b.files.all()]}
             for b in e.budget_lines.all()
         ],
         "approvals": [approval_to_dict(a) for a in e.approvals.all()],
@@ -191,7 +247,8 @@ def event_to_dict(e):
         "contacts": [
             {"id": c.id, "personId": c.person_id or "", "role": c.role, "name": c.name, "org": c.org_name,
              "phone": c.phone, "email": c.email, "audiences": c.audiences or [],
-             "showPhone": c.show_phone, "invoiceUrl": c.invoice_url, "remind": c.remind, "team": c.team}
+             "showPhone": c.show_phone, "invoiceUrl": c.invoice_url, "remind": c.remind, "team": c.team,
+             "roster": c.roster, "booth": c.booth, "fee": num_out(c.fee), "feePaid": c.fee_paid, "sentAt": ms_time(c.sent_at)}
             for c in e.contacts.all()
         ],
         "compliance": [
@@ -208,7 +265,8 @@ def event_to_dict(e):
             "image": e.floor_plan_id or "",
             "room": {"w": e.room_width, "d": e.room_depth},
             "pieces": [
-                {"id": p.id, "kind": p.kind, "label": p.label, "x": p.x, "y": p.y, "w": p.w, "h": p.h, "rot": p.rot}
+                {"id": p.id, "kind": p.kind, "label": p.label, "x": p.x, "y": p.y, "w": p.w, "h": p.h, "rot": p.rot,
+                 "group": p.group, "contactId": p.contact_id}
                 for p in e.layout_pieces.all()
             ],
             "pins": [
@@ -232,12 +290,12 @@ def event_queryset(org):
 
 def person_to_dict(p):
     return {"id": p.id, "name": p.name, "org": p.org_name, "role": p.role, "phone": p.phone,
-            "email": p.email, "invoiceUrl": p.invoice_url, "notes": p.notes}
+            "email": p.email, "invoiceUrl": p.invoice_url, "notes": p.notes, "tags": p.tags or []}
 
 
 def note_to_dict(n):
     return {"id": n.id, "text": n.text, "where": n.where, "eventId": n.event_id_ref, "done": n.done,
-            "createdAt": int(n.created_at.timestamp() * 1000)}
+            "shared": n.shared, "createdAt": int(n.created_at.timestamp() * 1000)}
 
 
 # ---------------------------------------------------------------------------
@@ -301,6 +359,11 @@ def save_event_dict(org, event_id, data):
     event.ai_summary = text(data.get("aiSummary"), 20000)
     event.budget_total = num(data.get("budgetTotal"))
     event.wrapup = clean_wrapup(data.get("wrapup"))
+    event.groups = clean_groups(data.get("groups"))
+    event.no_headcount = bool(data.get("noHeadcount"))
+    event.custom_tabs = clean_tabs(data.get("customTabs"))
+    event.hidden_tabs = [k for k in (data.get("hiddenTabs") or []) if isinstance(k, str) and k.isidentifier()][:20]
+    allowed = {"Internal"} | {g["id"] for g in event.groups}
 
     program = data.get("program") or {}
     event.program_start = s2t(program.get("start"))
@@ -325,10 +388,7 @@ def save_event_dict(org, event_id, data):
         o.owner_ref = clean_id(r.get("ownerId")) or ""
         # The day it was marked done (the screens send it; if not, today). Cleared if reopened.
         o.done_at = (s2d(r.get("doneAt")) or o.done_at or date.today()) if o.status == "done" else None
-        o.checklist = [
-            {"id": text(c.get("id"), 40), "text": text(c.get("text"), 500), "done": bool(c.get("done"))}
-            for c in (r.get("checklist") or []) if isinstance(c, dict)
-        ][:100]
+        o.checklist = clean_steps(r.get("checklist"))
     _sync(Milestone, event, data.get("milestones"), fill_milestone)
 
     def fill_setup(o, r):
@@ -336,7 +396,7 @@ def save_event_dict(org, event_id, data):
         o.start = s2t(r.get("start"))
         o.end = s2t(r.get("end"))
         o.track = text(r.get("track"), 50) or "Production"
-        o.audiences = audiences(r.get("audiences"))
+        o.audiences = audiences(r.get("audiences"), allowed)
         o.notes = text(r.get("notes"))
     _sync(SetupItem, event, data.get("setup"), fill_setup)
 
@@ -344,7 +404,7 @@ def save_event_dict(org, event_id, data):
         o.title = text(r.get("title"), 500) or "Segment"
         o.who = text(r.get("who"), 200)
         o.dur = max(0, to_int(r.get("dur"), 15))
-        o.audiences = audiences(r.get("audiences"))
+        o.audiences = audiences(r.get("audiences"), allowed)
         o.notes = text(r.get("notes"))
     _sync(ProgramItem, event, program.get("items"), fill_program)
 
@@ -356,11 +416,16 @@ def save_event_dict(org, event_id, data):
         o.org_name = text(r.get("org"), 200)
         o.phone = text(r.get("phone"), 50)
         o.email = text(r.get("email"), 254)
-        o.audiences = audiences(r.get("audiences"))
+        o.audiences = audiences(r.get("audiences"), allowed)
         o.show_phone = bool(r.get("showPhone"))
         o.invoice_url = text(r.get("invoiceUrl"), 500)
         o.remind = r.get("remind") is not False
         o.team = bool(r.get("team"))
+        o.roster = bool(r.get("roster"))
+        o.booth = text(r.get("booth"), 300)
+        o.fee = num(r.get("fee"))
+        o.fee_paid = bool(r.get("feePaid"))
+        # sent_at is set by the server when it emails an itinerary; the screens can't change it
     _sync(EventContact, event, data.get("contacts"), fill_contact)
 
     def fill_compliance(o, r):
@@ -406,6 +471,7 @@ def save_event_dict(org, event_id, data):
         valid = ("expected", "confirmed", "received") if o.kind == "income" else ("estimated", "committed", "invoiced", "paid")
         o.status = r.get("status") if r.get("status") in valid else valid[0]
         o.notes = text(r.get("notes"))
+        o.fees = num(r.get("fees")) if o.kind == "income" else None
     kept_budget = _sync(BudgetLine, event, data.get("budget"), fill_budget)
     for row in data.get("budget") or []:
         bid = clean_id(row.get("id")) if isinstance(row, dict) else None
@@ -423,6 +489,8 @@ def save_event_dict(org, event_id, data):
         o.x, o.y = to_float(r.get("x")), to_float(r.get("y"))
         o.w, o.h = max(0.5, to_float(r.get("w"), 6)), max(0.5, to_float(r.get("h"), 4))
         o.rot = to_int(r.get("rot")) % 360
+        o.group = r.get("group") if r.get("group") in allowed else ""
+        o.contact_id = clean_id(r.get("contactId")) or ""
     _sync(LayoutPiece, event, layout.get("pieces"), fill_piece)
 
     def fill_pin(o, r):
@@ -448,6 +516,7 @@ def save_person_dict(org, person_id, data):
     url = text(data.get("invoiceUrl"), 500)
     person.invoice_url = url if url.startswith("https://") else ""
     person.notes = text(data.get("notes"))
+    person.tags = [t for t in dict.fromkeys(text(x, 40).strip() for x in (data.get("tags") or []) if str(x).strip())][:12]
     person.save()
     return person
 
@@ -458,6 +527,7 @@ def save_note_dict(org, user, note_id, data):
     note.where = text(data.get("where"), 300)
     note.event_id_ref = text(data.get("eventId"), 40)
     note.done = bool(data.get("done"))
+    note.shared = bool(data.get("shared"))
     note.save()
     return note
 

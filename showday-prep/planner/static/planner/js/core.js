@@ -35,15 +35,20 @@ function normalize(ev,id){
   ['milestones','setup','contacts','compliance','equipment','houseRules','budget','approvals'].forEach(k => { if(!Array.isArray(ev[k])) ev[k] = []; });
   if(!ev.program || typeof ev.program !== 'object') ev.program = {start:'19:00', items:[]};
   if(!Array.isArray(ev.program.items)) ev.program.items = [];
-  ev.milestones.forEach(m => { if(!Array.isArray(m.checklist)) m.checklist = []; if(m.desc == null) m.desc = ''; if(m.doneAt == null) m.doneAt = ''; });
+  ev.milestones.forEach(m => { if(!Array.isArray(m.checklist)) m.checklist = []; if(m.desc == null) m.desc = ''; if(m.doneAt == null) m.doneAt = ''; m.checklist.forEach(c => { if(c.offset === undefined || c.offset === '') c.offset = null; }); });
   ev.setup.forEach(s => { if(s.track === 'Performers') s.track = 'Program & talent'; if(!TRACKS.includes(s.track)) s.track = 'Production'; });
   ev.compliance.forEach(c => { if(!Array.isArray(c.files)) c.files = []; });
   ev.budget.forEach(b => { if(!Array.isArray(b.files)) b.files = []; if(!b.kind) b.kind = 'cost'; });
-  ev.contacts.forEach(c => { if(c.remind == null) c.remind = true; });
+  ev.contacts.forEach(c => { if(c.remind == null) c.remind = true; if(c.roster == null) c.roster = false; if(c.booth == null) c.booth = ''; if(c.fee == null) c.fee = ''; if(c.feePaid == null) c.feePaid = false; });
+  // [beta] each event's own groups; the custom tabs and hidden tabs
+  if(!Array.isArray(ev.groups) || !ev.groups.length) ev.groups = clone(DEFAULT_GROUPS);
+  if(!Array.isArray(ev.customTabs)) ev.customTabs = [];
+  if(!Array.isArray(ev.hiddenTabs)) ev.hiddenTabs = [];
+  if(ev.noHeadcount == null) ev.noHeadcount = false;
   // "Team" = the planning team: gets payment reminders and the Monday summary. Older events: the lead.
   if(ev.contacts.length && !ev.contacts.some(c => c.team != null)){ const lead = ev.contacts.find(c => /lead|manager|producer/i.test(c.role||'')) || ev.contacts[0]; ev.contacts.forEach(c => c.team = c === lead); }
   if(!ev.layout || typeof ev.layout !== 'object') ev.layout = {};
-  const L = ev.layout; if(!Array.isArray(L.pins)) L.pins = []; if(!Array.isArray(L.pieces)) L.pieces = []; if(!L.room) L.room = {w:60,d:80}; if(L.image == null) L.image = '';
+  const L = ev.layout; if(!Array.isArray(L.pins)) L.pins = []; if(!Array.isArray(L.pieces)) L.pieces = []; L.pieces.forEach(p => { if(p.group == null) p.group = ''; if(p.contactId == null) p.contactId = ''; }); if(!L.room) L.room = {w:60,d:80}; if(L.image == null) L.image = '';
   if(!ev.kind) ev.kind = 'organizer';
   if(!ev.wrapup || typeof ev.wrapup !== 'object') ev.wrapup = {};
   if(!ev.wrapup.ratings || typeof ev.wrapup.ratings !== 'object') ev.wrapup.ratings = {};
@@ -101,7 +106,14 @@ async function flush(id){
   if(saving[id]){ saving[id].again = true; return; }
   saving[id] = {again:false};
   const ev = S.events[id];
-  if(ev){ try { await store.saveEvent(ev); S.saveMsg = 'All changes saved'; } catch(e){ writeFailed(e); } }
+  if(ev){
+    try { await store.saveEvent(ev); S.saveMsg = 'All changes saved'; }
+    catch(e){
+      // [beta] a dropped connection or a busy server: try once more before telling anyone
+      if(!e.status || e.status >= 500){ await new Promise(r => setTimeout(r, 900)); try { await store.saveEvent(ev); S.saveMsg = 'All changes saved'; } catch(e2){ writeFailed(e2); } }
+      else writeFailed(e);
+    }
+  }
   const again = saving[id].again; delete saving[id];
   if(again) flush(id); else { pending[id] = false; updateSaveState(); }
 }
@@ -137,7 +149,7 @@ async function deleteEvent(id){
 /* ---------- contacts directory ---------- */
 async function savePerson(p){
   if(!p.id) p.id = uid();
-  const body = {id:p.id, name:p.name||'', org:p.org||'', role:p.role||'', phone:p.phone||'', email:p.email||'', invoiceUrl:p.invoiceUrl||'', notes:p.notes||''};
+  const body = {id:p.id, name:p.name||'', org:p.org||'', role:p.role||'', phone:p.phone||'', email:p.email||'', invoiceUrl:p.invoiceUrl||'', notes:p.notes||'', tags:Array.isArray(p.tags) ? p.tags : []};
   const i = S.people.findIndex(x => x.id === p.id);
   if(i >= 0) S.people[i] = body; else S.people.push(body);
   try { await store.savePerson(body); } catch(e){ writeFailed(e); }
@@ -150,11 +162,11 @@ async function removePerson(id){
 function personKey(p){ return norm(p.name)+'|'+norm(p.org); }
 
 /* ---------- testing notes ---------- */
-async function addNote(text){
+async function addNote(text, shared){
   const ev = S.events[S.eventId];
-  const tabName = (TABS.find(t => t[0] === S.tab)||[])[1];
-  const where = S.view === 'event' && ev ? (ev.name||'Untitled')+' · '+tabName : ({contacts:'Contacts', reports:'Reports', library:'Templates', hours:'Hours'})[S.view] || 'Events home';
-  const n = {id:uid(), text, where, eventId: S.view === 'event' ? S.eventId : '', done:false, createdAt:Date.now()};
+  const tabName = (TABS.find(t => t[0] === S.tab)||[])[1] || (ev && String(S.tab).startsWith('ct:') ? ((ev.customTabs||[]).find(t => 'ct:'+t.id === S.tab)||{}).name : '');
+  const where = S.view === 'event' && ev ? (ev.name||'Untitled')+' · '+tabName : ({contacts:'Contacts', reports:'Reports', library:'Templates', hours:'Hours', team:'Team', series:'Series'})[S.view] || 'Events home';
+  const n = {id:uid(), text, where, eventId: S.view === 'event' ? S.eventId : '', done:false, shared:!!shared, createdAt:Date.now()};
   S.notes.unshift(n); render();
   try { await store.saveNote(n); } catch(e){ writeFailed(e); }
 }
@@ -215,7 +227,7 @@ function programTimes(ev){
 function spanOf(it){ const s = toMin(it.start), e0 = toMin(it.end); if(s == null) return null; let e = e0 == null ? s : e0; if(e < s) e += 1440; return {s, e}; }
 function daySchedule(ev){
   const setup = ev.setup.map(s => { const sp = spanOf(s); return sp ? Object.assign({}, s, {s:sp.s, e:sp.e, kind:'setup'}) : null; }).filter(Boolean);
-  return setup.concat(programTimes(ev)).sort((a,b) => a.s - b.s || (a.kind === 'setup' ? -1 : 1));
+  return setup.concat(programTimes(ev)).sort((a,b) => a.s - b.s || (a.kind === b.kind ? 0 : a.kind === 'setup' ? -1 : 1));   // same start time: setup first, otherwise keep the order they were entered
 }
 function contactMatches(ev,name){
   const n = norm(name); if(!n) return true;
@@ -227,11 +239,15 @@ function contactMatches(ev,name){
 function lastActiveDay(ev){
   if(!isYMD(ev.date)) return '';
   let last = ev.date;
-  ev.milestones.filter(m => m.status !== 'done').forEach(m => { const d = addDays(ev.date, Number(m.offset)||0); if(d > last) last = d; });
+  ev.milestones.filter(m => m.status !== 'done').forEach(m => { const d = addDays(ev.date, Number(m.offset)||0); if(d > last) last = d; openSteps(ev, m).forEach(st => { if(st.d > last) last = st.d; }); });
   ev.compliance.filter(c => c.status === 'needed').forEach(c => { const d = addDays(ev.date, Number(c.offset)||0); if(d > last) last = d; });
   ev.budget.filter(b => b.kind === 'cost' && b.status !== 'paid' && isYMD(b.due)).forEach(b => { if(b.due > last) last = b.due; });
   return last;
 }
+
+/* [beta] A deadline's checklist steps that have their own due date and aren't done. */
+function openSteps(ev, m){ return m.status === 'done' ? [] : (m.checklist||[]).filter(c => c.offset != null && !c.done).map(c => Object.assign({d:addDays(ev.date, Number(c.offset)||0)}, c)); }
+function stepProgress(m){ const cl = m.checklist||[], done = cl.filter(c => c.done).length; return {done, total:cl.length, pct: cl.length ? Math.round(done/cl.length*100) : 0}; }
 
 /* Everything one person is responsible for in an event (for "Download by person"). */
 function personTasks(ev, name){
@@ -261,13 +277,15 @@ function runChecks(ev){
   const toShow = diffDays(today, ev.date);
   if(toShow < 0) add('info','Show day has passed. Clone this event to plan the next one.','overview','Facts');
   if(ev.priceAdv !== '' && ev.priceDoor !== '' && ev.priceAdv != null && ev.priceDoor != null && Number(ev.priceDoor) < Number(ev.priceAdv)) add('warning','Door price ('+money(ev.priceDoor)+') is lower than the advance price ('+money(ev.priceAdv)+').','overview','Facts');
-  if(Number(ev.capacity) && Number(ev.target) > Number(ev.capacity)) add('warning','Target headcount ('+ev.target+') is above venue capacity ('+ev.capacity+').','overview','Facts');
+  if(!ev.noHeadcount && Number(ev.capacity) && Number(ev.target) > Number(ev.capacity)) add('warning','Target headcount ('+ev.target+') is above venue capacity ('+ev.capacity+').','overview','Facts');
   ev.milestones.forEach(m => {
     const d = addDays(ev.date, Number(m.offset)||0);
     if(m.status !== 'done'){
       if(d < today) add(m.hard?'critical':'warning','“'+m.title+'” was due '+fmtD(d,true)+(m.hard?' (hard deadline)':'')+' and isn’t marked done.','milestones','Deadlines',{type:'ms',id:m.id});
       else if(m.hard && diffDays(today,d) <= 7) add('warning','Hard deadline “'+m.title+'” is due in '+diffDays(today,d)+' days.','milestones','Deadlines',{type:'ms',id:m.id});
       if(!String(m.owner||'').trim()) add('info','“'+m.title+'” has no owner.','milestones','Deadlines',{type:'ms',id:m.id});
+      openSteps(ev, m).filter(st => st.d < today).forEach(st => add('warning','Step “'+st.text+'” of “'+m.title+'” was due '+fmtD(st.d,true)+'.','milestones','Deadlines',{type:'ms',id:m.id}));
+      const P = stepProgress(m); if(P.total && P.done === P.total) add('info','Every step of “'+m.title+'” is done. Mark the deadline done?','milestones','Deadlines',{type:'ms',id:m.id});
     }
   });
   ev.compliance.forEach(c => {
@@ -347,6 +365,7 @@ function buildICS(ev, items){
 function deadlineItems(ev){
   const items = ev.milestones.map(m => ({uid:m.id, allDay:true, date:addDays(ev.date,Number(m.offset)||0), title:(m.hard?'HARD DEADLINE: ':'')+m.title+' ('+ev.name+')', desc:[m.desc, 'Owner: '+(m.owner||'unassigned')].filter(Boolean).join('\n')}));
   ev.compliance.forEach(c => items.push({uid:c.id, allDay:true, date:addDays(ev.date,Number(c.offset)||0), title:'Paperwork due: '+c.item+' ('+ev.name+')', desc:'Responsible: '+(c.owner||'unassigned')}));
+  ev.milestones.forEach(m => openSteps(ev, m).forEach(st => items.push({uid:m.id+'-'+st.id, allDay:true, date:st.d, title:'Step: '+st.text+' ('+m.title+', '+ev.name+')', desc:'Owner: '+(m.owner||'unassigned')})));
   const ds = toMin(ev.doors) == null ? 1140 : toMin(ev.doors); let de = toMin(ev.end) == null ? ds+180 : toMin(ev.end); if(de <= ds) de += 1440;
   items.push({uid:ev.id+'-show', allDay:false, date:ev.date, s:ds, e:de, title:ev.name, loc:[ev.venue,ev.address].filter(Boolean).join(', ')});
   ev.budget.filter(b => b.kind === 'cost' && isYMD(b.due) && b.status !== 'paid').forEach(b => items.push({uid:b.id, allDay:true, date:b.due, title:'Payment due: '+(b.item||b.cat)+(b.payee?' to '+b.payee:'')+' ('+ev.name+')', desc:'Amount: '+usd(hasAmt(b.actual)?b.actual:b.est)}));
@@ -358,20 +377,23 @@ function audienceItems(ev,aud){
 }
 
 /* ---------- export: one document model, two formats ---------- */
-function audLabel(a){ return (a||[]).join(', ') || 'Nobody yet'; }
+function audLabel(a, ev){ return (a||[]).map(x => gname(ev || curEv(), x)).join(', ') || 'Nobody yet'; }
+/* "[x] Tell the city (Mon Jun 8)" — a checklist step with its own date, for printouts. */
+function stepLine(ev, c){ return (c.done?'[x] ':'[ ] ')+c.text+(c.offset != null && isYMD(ev.date) ? ' (by '+fmtD(addDays(ev.date, Number(c.offset)||0), true)+')' : ''); }
 function exportDoc(ev, which){
   const today = todayYMD(), sections = [];
   const facts = {kv:[['Date',fmtLong(ev.date)],['Venue',[ev.venue,ev.address].filter(Boolean).join(', ')||'To confirm'],['Doors',fmt12(toMin(ev.doors))],['Ends',fmt12(toMin(ev.end))]]};
   if(ev.priceAdv !== '' && ev.priceAdv != null || ev.priceDoor !== '' && ev.priceDoor != null) facts.kv.push(['Tickets', money(ev.priceAdv)+' advance / '+money(ev.priceDoor)+' door']);
   if(ev.host) facts.kv.push(['Host',ev.host]);
-  if(ev.capacity || ev.target) facts.kv.push(['Headcount','Target '+(ev.target||'—')+' of '+(ev.capacity||'—')+' capacity']);
+  if(ev.noHeadcount) facts.kv.push(['Headcount','Not counted (open entry)']);
+  else if(ev.capacity || ev.target) facts.kv.push(['Headcount','Target '+(ev.target||'—')+' of '+(ev.capacity||'—')+' capacity']);
   const prog = {table:{head:['Time','Segment','Who'], widths:[.18,.5,.32], rows:programTimes(ev).map(p => [fmt12(p.s), p.title, p.who||''])}};
-  const sched = {table:{head:['Time','Item','Who / track','Shown to'], widths:[.2,.4,.2,.2], rows:daySchedule(ev).map(x => [fmt12(x.s)+(x.kind==='setup'?' – '+fmt12(x.e):''), x.title, x.kind==='setup'?x.track:(x.who||'Program'), audLabel(x.audiences)])}};
-  const msRows = ev.milestones.slice().sort((a,b) => (a.offset||0)-(b.offset||0)).map(m => [fmtD(addDays(ev.date,Number(m.offset)||0),true), tcode(m.offset), m.title+(m.hard?' (hard)':''), m.owner||'—', statusLabel(MS_STATUS,m.status)]);
+  const sched = {table:{head:['Time','Item','Who / track','Shown to'], widths:[.2,.4,.2,.2], rows:daySchedule(ev).map(x => [fmt12(x.s)+(x.kind==='setup'?' – '+fmt12(x.e):''), x.title, x.kind==='setup'?x.track:(x.who||'Program'), audLabel(x.audiences, ev)])}};
+  const msRows = ev.milestones.slice().sort((a,b) => (a.offset||0)-(b.offset||0)).map(m => { const P = stepProgress(m); return [fmtD(addDays(ev.date,Number(m.offset)||0),true), tcode(m.offset), m.title+(m.hard?' (hard)':'')+(P.total?' · '+P.done+' of '+P.total+' steps':''), m.owner||'—', statusLabel(MS_STATUS,m.status)]; });
   const msT = {table:{head:['Due','Days out','Task','Owner','Status'], widths:[.14,.12,.46,.14,.14], rows:msRows}};
   const cpT = {table:{head:['Item','Responsible','Due','Status','Files'], widths:[.4,.2,.14,.14,.12], rows:ev.compliance.map(c => [c.item, c.owner||'—', fmtD(addDays(ev.date,Number(c.offset)||0)), statusLabel(CP_STATUS,c.status), String((c.files||[]).length)])}};
   const eqT = {table:{head:['Item','Category','Qty','Source','Responsible','Status'], widths:[.3,.16,.07,.15,.16,.16], rows:ev.equipment.slice().sort((a,b) => EQ_CATS.indexOf(a.cat)-EQ_CATS.indexOf(b.cat)).map(e => [e.item, e.cat, String(e.qty), e.source, e.owner||'—', statusLabel(EQ_STATUS,e.status)])}};
-  const pplT = (full) => ({table:{head:['Role','Name','Organization','Phone','Email'], widths:[.2,.22,.2,.16,.22], rows:ev.contacts.map(c => [c.role||'', c.name||'To confirm', c.org||'', (full||c.showPhone)?(c.phone||''):'', full?(c.email||''):''])}});
+  const pplT = (full) => ({table:{head:['Role','Name','Organization','Phone','Email'], widths:[.2,.22,.2,.16,.22], rows:ev.contacts.filter(c => !c.roster).map(c => [c.role||'', c.name||'To confirm', c.org||'', (full||c.showPhone)?(c.phone||''):'', full?(c.email||''):''])}});
   const done = ev.milestones.filter(m => m.status==='done').length, ok = ev.compliance.filter(c => c.status==='approved').length, sec = ev.equipment.filter(e => e.status!=='needed').length;
   const status = {kv:[['Deadlines',done+' of '+ev.milestones.length+' done'],['Paperwork',ok+' of '+ev.compliance.length+' approved'],['Equipment',sec+' of '+ev.equipment.length+' secured or better']]};
   const issues = runChecks(ev).filter(x => x.level !== 'info').slice(0,10).map(x => x.text);
@@ -381,13 +403,17 @@ function exportDoc(ev, which){
   const budKV = {kv:[['Budget', B.cap ? usd(B.cap) : 'Not set'],['Projected costs', usd(B.projCost)],['Paid so far', usd(B.paid)],['Still owed', usd(B.owed)],['Projected income', usd(B.projIncome)],['Projected net', usd(B.net)]].concat(B.cap ? [['Left to spend', usd(B.left)]] : []).concat(B.breakEven != null ? [['Break-even', B.breakEven+' tickets at '+usd(ev.priceAdv)]] : [])};
   const lines = kind => ev.budget.filter(b => b.kind === kind);
   const costT = {table:{head:['Category','Item','Paid to','Estimated','Actual','Paid','Due','Status'], widths:[.14,.2,.16,.1,.1,.1,.1,.1], rows:lines('cost').map(b => [b.cat, b.item, b.payee||'', usd(b.est,''), usd(b.actual,''), usd(b.paid,''), isYMD(b.due)?fmtD(b.due):'', statusLabel(COST_STATUS,b.status)])}};
-  const incT = {table:{head:['Source','Item','Expected','Received','Status'], widths:[.2,.35,.15,.15,.15], rows:lines('income').map(b => [b.cat, b.item, usd(b.est,''), usd(b.actual,''), statusLabel(INCOME_STATUS,b.status)])}};
+  const incT = {table:{head:['Source','Item','Expected','Received','Fees kept','Status'], widths:[.17,.3,.13,.13,.12,.15], rows:lines('income').map(b => [b.cat, b.item, usd(b.est,''), usd(b.actual,''), usd(b.fees,''), statusLabel(INCOME_STATUS,b.status)])}};
+  // [beta] group lists: who's on each list, their booth or type, and their fee
+  const rosterSecs = groupsOf(ev).map(g => ({g, list:ev.contacts.filter(c => c.roster && (c.audiences||[]).includes(g.id))})).filter(x => x.list.length).map(x => ({h:x.g.name+' list', items:[{table:{head:['Name','Booth / type','Email','Phone','Fee','Paid'], widths:[.22,.22,.22,.14,.1,.1], rows:x.list.map(c => [c.name||c.org||'', c.booth||'', c.email||'', c.phone||'', usd(c.fee,''), hasAmt(c.fee)?(c.feePaid?'Yes':'No'):''])}}]}));
+  const tabSecs = (ev.customTabs||[]).filter(t => String(t.body||'').trim()).map(t => ({h:t.name, items:String(t.body).split(/\n{2,}/).map(p => ({p:p.trim()})).filter(x => x.p)}));
   const apT = {table:{head:['What','Approver','Status','Decided','Comment'], widths:[.3,.18,.16,.14,.22], rows:ev.approvals.map(a => [a.label, a.approver||'', statusLabel(APPROVAL_STATUS,a.status), a.decidedAt?fmtD(new Date(a.decidedAt).toISOString().slice(0,10)):'', a.comment||''])}};
-  if(which === 'budget') return {title:ev.name, subtitle:sub+' · Budget', sections:[{h:'Summary', items:[budKV]},{h:'Costs', items:[costT]},{h:'Income', items:[incT]}]};
+  if(which === 'budget') return {title:ev.name, subtitle:sub+' · Budget', sections:[{h:'Summary', items:[budKV]},{h:'Costs', items:[costT]},{h:'Income', items:[incT]}].concat(B.vendorFees ? [{h:'Vendor fees', items:[{table:{head:['Vendor','Group','Fee','Paid'], widths:[.4,.3,.15,.15], rows:ev.contacts.filter(c => c.roster && hasAmt(c.fee)).map(c => [c.name||c.org, audLabel((c.audiences||[]).filter(a => a!=='Internal'), ev), usd(c.fee), c.feePaid?'Yes':'No'])}}]}] : [])};
+  if(which && which.startsWith('tab:')){ const t = (ev.customTabs||[]).find(x => x.id === which.slice(4)); return {title:ev.name, subtitle:sub+' · '+(t?t.name:'Notes'), sections:t && tabSecs.find(x => x.h === t.name) ? [tabSecs.find(x => x.h === t.name)] : [{h:'', items:[{p:'Nothing written here yet.'}]}]}; }
   if(which && which.startsWith('person:')){
     const who = which.slice(7), T = personTasks(ev, who);
     const secs = [{h:'', items:[{p:'Everything assigned to '+who+' for '+ev.name+', as of '+fmtLong(today)+'.'}]}];
-    secs.push({h:'Deadlines', items:[{table:{head:['Due','Task','Status','Notes'], widths:[.16,.44,.14,.26], rows:T.deadlines.map(m => [fmtD(addDays(ev.date,Number(m.offset)||0),true), m.title+(m.hard?' (hard deadline)':''), statusLabel(MS_STATUS,m.status), [m.desc, (m.checklist||[]).filter(c=>!c.done).map(c=>'[ ] '+c.text).join('; ')].filter(Boolean).join(' ')])}}]});
+    secs.push({h:'Deadlines', items:[{table:{head:['Due','Task','Status','Notes'], widths:[.16,.44,.14,.26], rows:T.deadlines.map(m => [fmtD(addDays(ev.date,Number(m.offset)||0),true), m.title+(m.hard?' (hard deadline)':''), statusLabel(MS_STATUS,m.status), [m.desc, (m.checklist||[]).filter(c=>!c.done).map(c=>stepLine(ev, c)).join('; ')].filter(Boolean).join(' ')])}}]});
     if(T.paperwork.length) secs.push({h:'Paperwork', items:[{table:{head:['Due','Item','Status'], widths:[.2,.6,.2], rows:T.paperwork.map(c => [fmtD(addDays(ev.date,Number(c.offset)||0),true), c.item, statusLabel(CP_STATUS,c.status)])}}]});
     if(T.equipment.length) secs.push({h:'Equipment', items:[{table:{head:['Item','Qty','Status'], widths:[.6,.15,.25], rows:T.equipment.map(q => [q.item, String(q.qty), statusLabel(EQ_STATUS,q.status)])}}]});
     if(T.program.length) secs.push({h:'On show day', items:[{table:{head:['Time','Segment'], widths:[.25,.75], rows:T.program.map(p => [fmt12(p.s), p.title+' ('+p.dur+' min)'])}}]});
@@ -396,7 +422,7 @@ function exportDoc(ev, which){
   if(which === 'summary'){
     sections.push({h:'At a glance', items:[facts].concat(ev.about?[{p:ev.about}]:[])});
     if(programTimes(ev).length) sections.push({h:'Program', items:[prog]});
-    sections.push({h:'Who’s involved', items:[{table:{head:['Role','Name','Organization'], widths:[.34,.33,.33], rows:ev.contacts.filter(c=>c.name).map(c => [c.role||'', c.name, c.org||''])}}]});
+    sections.push({h:'Who’s involved', items:[{table:{head:['Role','Name','Organization'], widths:[.34,.33,.33], rows:ev.contacts.filter(c=>c.name && !c.roster).map(c => [c.role||'', c.name, c.org||''])}}]});
     sections.push({h:'Where we stand', items:[status]});
     if(ev.budget.length || B.cap) sections.push({h:'Budget', items:[budKV]});
     if(ev.approvals.length) sections.push({h:'Approvals', items:[apT]});
@@ -404,7 +430,7 @@ function exportDoc(ev, which){
     if(issues.length) sections.push({h:'Open issues', items:[{list:issues}]});
     return {title:ev.name||'Event', subtitle:sub+' · Event summary', sections};
   }
-  if(which === 'milestones'){ sections.push({h:'Deadlines', items:[msT]}); const withDesc = ev.milestones.filter(m => m.desc || (m.checklist||[]).length); if(withDesc.length) sections.push({h:'Details', items:withDesc.map(m => ({p:m.title+': '+(m.desc||'')+((m.checklist||[]).length?' Checklist: '+m.checklist.map(c => (c.done?'[x] ':'[ ] ')+c.text).join('; '):'')}))}); return {title:ev.name, subtitle:sub+' · Deadlines', sections}; }
+  if(which === 'milestones'){ sections.push({h:'Deadlines', items:[msT]}); const withDesc = ev.milestones.filter(m => m.desc || (m.checklist||[]).length); if(withDesc.length) sections.push({h:'Details', items:withDesc.map(m => ({p:m.title+': '+(m.desc||'')+((m.checklist||[]).length?' Checklist: '+m.checklist.map(c => stepLine(ev, c)).join('; '):'')}))}); return {title:ev.name, subtitle:sub+' · Deadlines', sections}; }
   if(which === 'show') return {title:ev.name, subtitle:sub+' · Run of show', sections:[{h:'Show day schedule', items:[sched]}]};
   if(which === 'equipment') return {title:ev.name, subtitle:sub+' · Equipment', sections:[{h:'Equipment list', items:[status.kv?{kv:[status.kv[2]]}:null, eqT].filter(Boolean)}]};
   if(which === 'people') return {title:ev.name, subtitle:sub+' · Contacts', sections:[{h:'People', items:[pplT(true)]}]};
@@ -413,8 +439,8 @@ function exportDoc(ev, which){
   if(which && which.startsWith('share:')){
     const a = which.slice(6);
     const rows = daySchedule(ev).filter(x => a==='Internal' || (x.audiences||[]).includes(a)).map(x => [fmt12(x.s)+(x.kind==='setup'?' – '+fmt12(x.e):''), (x.who?x.who+' · ':'')+x.title]);
-    const ppl = ev.contacts.filter(c => a==='Internal' || (c.audiences||[]).includes(a)).map(c => [c.role||'', c.name||'To confirm', (a==='Internal'||c.showPhone)?(c.phone||''):'']);
-    return {title:ev.name, subtitle:sub+' · '+a+' itinerary', sections:[{h:'Details',items:[facts].concat(ev.about?[{p:ev.about}]:[])},{h:'Your schedule',items:[{table:{head:['Time','What'],widths:[.28,.72],rows}}]},{h:'Who to contact',items:[{table:{head:['Role','Name','Phone'],widths:[.34,.36,.3],rows:ppl}}]}]};
+    const ppl = ev.contacts.filter(c => !c.roster && (a==='Internal' || (c.audiences||[]).includes(a))).map(c => [c.role||'', c.name||'To confirm', (a==='Internal'||c.showPhone)?(c.phone||''):'']);
+    return {title:ev.name, subtitle:sub+' · '+gname(ev, a)+' itinerary', sections:[{h:'Details',items:[facts].concat(ev.about?[{p:ev.about}]:[])},{h:'Your schedule',items:[{table:{head:['Time','What'],widths:[.28,.72],rows}}]},{h:'Who to contact',items:[{table:{head:['Role','Name','Phone'],widths:[.34,.36,.3],rows:ppl}}]}]};
   }
   // full plan
   sections.push({h:'Overview', items:[facts].concat(ev.about?[{p:ev.about}]:[]).concat([status])});
@@ -424,8 +450,10 @@ function exportDoc(ev, which){
   if(ev.equipment.length) sections.push({h:'Equipment', items:[eqT]});
   sections.push({h:'People', items:[pplT(true)]});
   if(ev.compliance.length) sections.push({h:'Permits and paperwork', items:[cpT]});
+  rosterSecs.forEach(x => sections.push(x));
   if(ev.budget.length || B.cap) sections.push({h:'Budget', items:[budKV, costT, incT]});
   if(ev.approvals.length) sections.push({h:'Approvals', items:[apT]});
+  tabSecs.forEach(x => sections.push(x));
   if(ev.wrapup && ev.wrapup.completedAt) sections.push({h:'Wrap-up', items:[{kv:[['Attendance', String(ev.wrapup.attendance||'—')],['Rating', ev.wrapup.rating ? ev.wrapup.rating+' of 5' : '—']]}].concat(ev.wrapup.worked?[{p:'What worked: '+ev.wrapup.worked}]:[]).concat(ev.wrapup.change?[{p:'Change next time: '+ev.wrapup.change}]:[])});
   if(ev.kind === 'venue' && ev.houseRules.length) sections.push({h:'House rules', items:[{list:ev.houseRules}]});
   if(issues.length) sections.push({h:'Open issues', items:[{list:issues}]});

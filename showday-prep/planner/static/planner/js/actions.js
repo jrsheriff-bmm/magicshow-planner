@@ -17,6 +17,7 @@ function openDrawer(type,id){ S.drawer = {type,id}; render(); }
 const actions = {
   home(){ S.view='home'; S.modal=null; S.drawer=null; render(); window.scrollTo(0,0); },
   contacts(){ S.view='contacts'; S.modal=null; S.drawer=null; render(); window.scrollTo(0,0); },
+  dirTag(el){ S.dirTag = el.dataset.v; render(); },   // [beta] Contacts: show one tag
   open(el){ openEvent(el.dataset.id); },
   tab(el){ S.tab = el.dataset.tab; S.confirmDel=null; S.placing=false; if(S.drawer && S.drawer !== 'notes') S.drawer = null; render(); },
   fix(el){ S.tab = el.dataset.tab; if(el.dataset.rtype === 'ms') S.drawer = {type:'ms', id:el.dataset.rid}; else if(el.dataset.rtype === 'item'){ S.showView = 'sheet'; S.drawer = {type:'item', id:el.dataset.rid}; } render(); },
@@ -57,7 +58,7 @@ const actions = {
   /* show */
   showView(el){ S.showView = el.dataset.v; render(); },
   openItem(el){ openDrawer('item', el.dataset.id); },
-  addSetup(){ const ev = curEv(); ev.setup.push({id:uid(),title:'New setup item',start:'16:00',end:'16:30',track:'Production',audiences:['Internal'],notes:''}); touch(ev); toast('Added to the Internal page only. Tap Performers, Vendors, Venue or Security in “Shown to” to put it on their pages too.'); },
+  addSetup(){ const ev = curEv(); ev.setup.push({id:uid(),title:'New setup item',start:'16:00',end:'16:30',track:'Production',audiences:['Internal'],notes:''}); touch(ev); toast('Added to the Internal page only. Tap a group in “Shown to” to put it on that group’s page too.'); },
   addProg(){ const ev = curEv(); ev.program.items.push({id:uid(),title:'New segment',who:'',dur:15,audiences:['Internal','Performers'],notes:''}); touch(ev); toast('Added to the Internal and Performers pages. Change “Shown to” to add or remove pages.'); },
   move(el){ const ev = curEv(), arr = ev.program.items, i = arr.findIndex(x => x.id === el.dataset.id), j = i + Number(el.dataset.dir); if(i<0||j<0||j>=arr.length) return; const t = arr[i]; arr[i]=arr[j]; arr[j]=t; touch(ev); },
   /* [final] Add a line at a chosen place instead of at the end. */
@@ -93,7 +94,7 @@ const actions = {
   doPick(){ const ev = curEv(); const ids = [...document.querySelectorAll('input[name="pickP"]:checked')].map(i => i.value); ids.forEach(id => { const p = S.people.find(x => x.id === id); if(p) ev.contacts.push({id:uid(), personId:p.id, role:p.role||'', name:p.name||'', org:p.org||'', phone:p.phone||'', email:p.email||'', audiences:['Internal'], showPhone:false, invoiceUrl:p.invoiceUrl||'', remind:true, team:false}); }); S.modal = null; touch(ev); if(ids.length) toast('Added '+ids.length+' '+(ids.length===1?'person':'people')+'. Set their role and tags in the table.'); },
   send(el){ S.modal = {type:'send', id:el.dataset.id}; render(); },
   async copySend(){ const t = $('#sendText'); if(!t) return; try { await navigator.clipboard.writeText(t.value); toast('Message copied. Paste it into a text or email.'); } catch(e){ t.focus(); t.select(); toast('Press Ctrl+C (or Cmd+C) to copy the selected message.'); } },
-  icsFor(el){ const ev = curEv(); saveFile(slug(ev.name)+'-'+el.dataset.aud.toLowerCase()+'-schedule.ics', buildICS(ev, audienceItems(ev, el.dataset.aud))); },
+  icsFor(el){ const ev = curEv(); saveFile(slug(ev.name)+'-'+slug(gname(ev, el.dataset.aud))+'-schedule.ics', buildICS(ev, audienceItems(ev, el.dataset.aud))); },
   async saveToDir(el){ const ev = curEv(), c = ev.contacts.find(x => x.id === el.dataset.id); if(!c) return; if(!c.name && !c.org){ toast('Add a name first.'); return; } c.personId = await savePerson({name:c.name, org:c.org, role:c.role, phone:c.phone, email:c.email, invoiceUrl:c.invoiceUrl}); touch(ev); toast((c.name||c.org)+' saved to Contacts.'); },
   async importPeople(){
     let added = 0; const keys = new Set(S.people.map(personKey));
@@ -117,13 +118,13 @@ const actions = {
   rmFile(el){ const ev = curEv(), c = ev.compliance.find(x => x.id === el.dataset.cp); if(!c) return; c.files = c.files.filter(f => f.id !== el.dataset.id); touch(ev); },
   /* layout */
   layoutView(el){ S.layoutView = el.dataset.v; S.placing = false; S.drawer = null; render(); },
-  addPiece(el){ const ev = curEv(), L = ev.layout, def = LAYOUT_PIECES[el.dataset.kind]; const W = Number(L.room.w)||60, D = Number(L.room.d)||80; const n = L.pieces.length % 6; const p = {id:uid(), kind:el.dataset.kind, label:el.dataset.kind==='label'?'Label':'', w:def.w, h:def.h, rot:0, x:Math.max(0,Math.min(W-def.w, W/2-def.w/2+n*2)), y:Math.max(0,Math.min(D-def.h, D/2-def.h/2+n*2))}; L.pieces.push(p); S.drawer = {type:'piece', id:p.id}; touch(ev); },
+  addPiece(el){ const ev = curEv(), L = ev.layout, def = LAYOUT_PIECES[el.dataset.kind]; const W = Number(L.room.w)||60, D = Number(L.room.d)||80; const n = L.pieces.length % 6; const p = {id:uid(), kind:el.dataset.kind, label:el.dataset.kind==='label'?'Label':el.dataset.kind==='custom'?'Custom area':'', w:def.w, h:def.h, rot:0, x:Math.max(0,Math.min(W-def.w, W/2-def.w/2+n*2)), y:Math.max(0,Math.min(D-def.h, D/2-def.h/2+n*2)), group:def.group && gindex(ev, def.group) >= 0 ? def.group : '', contactId:''}; L.pieces.push(p); S.drawer = {type:'piece', id:p.id}; touch(ev); if(def.custom) focusNew('#pc-label'); },
   rotPiece(el){ const ev = curEv(), p = ev.layout.pieces.find(x => x.id === el.dataset.id); if(!p) return; p.rot = ((p.rot||0) + 90) % 360; touch(ev); },
   dupPiece(el){ const ev = curEv(), p = ev.layout.pieces.find(x => x.id === el.dataset.id); if(!p) return; const c = Object.assign({}, p, {id:uid(), x:p.x + ((p.rot||0)%180 ? p.h : p.w), y:p.y}); ev.layout.pieces.push(c); S.drawer = {type:'piece', id:c.id}; touch(ev); },
   placing(){ S.placing = !S.placing; render(); },
   /* share & calendar */
   shareAud(el){ S.shareAud = el.dataset.aud; render(); },
-  icsAud(){ const ev = curEv(); saveFile(slug(ev.name)+'-'+S.shareAud.toLowerCase()+'-schedule.ics', buildICS(ev, audienceItems(ev, S.shareAud))); },
+  icsAud(){ const ev = curEv(); saveFile(slug(ev.name)+'-'+slug(gname(ev, S.shareAud))+'-schedule.ics', buildICS(ev, audienceItems(ev, S.shareAud))); },
   icsAll(){ const ev = curEv(); saveFile(slug(ev.name)+'-deadlines.ics', buildICS(ev, deadlineItems(ev))); },
   cal(el){ let [y,m] = S.calMonth.split('-').map(Number); m += Number(el.dataset.dir); if(m<1){m=12;y--;} if(m>12){m=1;y++;} S.calMonth = y+'-'+pad(m); render(); },
   /* account and links */
@@ -132,7 +133,7 @@ const actions = {
   copyLink(el){ copyText(el.dataset.url, el.dataset.label || 'Link'); },
   /* notes */
   notes(){ S.drawer = S.drawer === 'notes' ? null : 'notes'; render(); if(S.drawer) setTimeout(() => { const t = $('#noteText'); if(t) t.focus(); }, 0); },
-  saveNote(){ const t = $('#noteText'); const v = t && t.value.trim(); if(!v) return; t.value = ''; addNote(v); },
+  saveNote(){ const t = $('#noteText'), sh = $('#noteShare'); const v = t && t.value.trim(); if(!v) return; t.value = ''; if(sh) S.noteShare = sh.checked; addNote(v, sh ? sh.checked : false); if(sh && sh.checked) toast('Sent to the MagicShow team. Thank you!'); },
   delNote(el){ removeNote(el.dataset.id); }
 };
 
@@ -170,11 +171,20 @@ document.addEventListener('change', async e => {
   if(el.dataset.note){ patchNote(el.dataset.note, {done: el.checked}); return; }
   if(el.id === 'prevTime'){ S.previewTime = toMin(el.value); render(); return; }
   if(S.readOnly) return;
-  if(el.dataset.person){ const [id,k] = el.dataset.person.split('|'); const p = S.people.find(x => x.id === id); if(p){ p[k] = el.value; savePerson(p); } return; }
+  if(el.dataset.person){ const [id,k] = el.dataset.person.split('|'); const p = S.people.find(x => x.id === id); if(p){ p[k] = k === 'tags' ? el.value.split(',').map(t => t.trim()).filter(Boolean) : el.value; savePerson(p); if(k === 'tags') renderInput(); } return; }
   const ev = curEv();
   if(el.dataset.upload && ev){ const c = ev.compliance.find(x => x.id === el.dataset.upload); const f = await uploadFile(el.files && el.files[0]); if(c && f){ c.files.push(f); touch(ev); toast('Uploaded '+f.name+'.'); } return; }
   if(el.id === 'planUpload' && ev){ const f = el.files && el.files[0]; if(f && !/^image\//.test(f.type)){ toast('Upload the floor plan as a PNG or JPG image.'); return; } const r = await uploadFile(f); if(r){ ev.layout.image = r.id; touch(ev); } return; }
-  if(el.dataset.sub && ev){ const [mid,sid,k] = el.dataset.sub.split('|'); const m = ev.milestones.find(x => x.id === mid); const s = m && m.checklist.find(x => x.id === sid); if(s){ s[k] = k === 'done' ? el.checked : el.value; touch(ev); } return; }
+  if(el.dataset.sub && ev){
+    const [mid,sid,k] = el.dataset.sub.split('|'); const m = ev.milestones.find(x => x.id === mid); const s = m && m.checklist.find(x => x.id === sid); if(!s) return;
+    if(k === 'due') s.offset = isYMD(el.value) && isYMD(ev.date) ? diffDays(ev.date, el.value) : null;   // [beta] a step's own due date
+    else s[k] = k === 'done' ? el.checked : el.value;
+    if(k === 'done' && el.checked){
+      if(m.status === 'todo') setMsStatus(m, 'doing');          // ticking a step means someone is working on it
+      const P = stepProgress(m); if(P.total && P.done === P.total && m.status !== 'done') toast('Every step of “'+m.title+'” is done. Set its status to Done when you’re ready.');
+    }
+    touch(ev); return;
+  }
   const spec = el.dataset.edit; if(!spec || !ev) return;
   const [list,id,key] = spec.split('|');
   const val = el.type === 'checkbox' ? el.checked : el.value;
@@ -188,7 +198,8 @@ document.addEventListener('change', async e => {
   else if(key === '_side'){ const n = Math.abs(Number(it.offset)||0) || 1; it.offset = val === 'on' ? 0 : val === 'after' ? n : -n; }
   else if(key === '_date'){ if(!isYMD(val)){ render(); return; } it.offset = diffDays(ev.date, val); }
   else if(list === 'milestones' && key === 'status') setMsStatus(it, val);
-  else if(el.type === 'number') it[key] = val === '' ? (list === 'budget' ? '' : 0) : (list === 'pieces' ? Math.max(0.5, Number(val)) : Number(val));
+  else if(key === 'owner'){ it[key] = val; addMemberToPeople(ev, val); }
+  else if(el.type === 'number') it[key] = val === '' ? (list === 'budget' || key === 'fee' ? '' : 0) : (list === 'pieces' ? Math.max(0.5, Number(val)) : Number(val));
   else it[key] = val;
   touch(ev);
 });
@@ -289,3 +300,12 @@ function endRowDrag(commit){
 }
 document.addEventListener('pointerup', () => endRowDrag(true));
 document.addEventListener('pointercancel', () => endRowDrag(false));
+
+/* [beta] Picking a workspace member as an owner adds them to People (with their email),
+   so reminders reach them without anyone typing the email again. */
+function addMemberToPeople(ev, name){
+  const n = norm(name); if(!n || findContact(ev, name)) return;
+  const m = (S.members||[]).find(x => norm(x.name) === n || norm(x.email) === n); if(!m) return;
+  ev.contacts.push({id:uid(), role:'Team member', name:m.name, org:S.org ? S.org.name : '', phone:'', email:m.email||'', audiences:['Internal'], showPhone:false, invoiceUrl:'', remind:true, team:false, roster:false});
+  toast(m.name+' was added to People, so their reminders go to '+(m.email||'their email')+'.');
+}

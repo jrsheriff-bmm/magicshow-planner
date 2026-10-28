@@ -12,7 +12,9 @@ ZERO = Decimal("0")
 
 
 def _proj(line):
-    return line.actual if line.actual is not None else (line.est or ZERO)
+    """Projected amount. [beta] For income, minus the fees a ticket platform kept."""
+    v = line.actual if line.actual is not None else (line.est or ZERO)
+    return v - (line.fees or ZERO) if line.kind == "income" else v
 
 
 def budget_summary(event):
@@ -25,7 +27,11 @@ def budget_summary(event):
     owed = sum((max(ZERO, _proj(b) - (b.paid or ZERO)) for b in costs if b.status in ("committed", "invoiced")), ZERO)
     ticket_lines = [b for b in income if b.cat == "Tickets" and (b.est is not None or b.actual is not None)]
     projected_tickets = Decimal(event.target or 0) * (event.price_adv or ZERO)
-    other_income = sum((_proj(b) for b in income if b.cat != "Tickets"), ZERO)
+    # [beta] Vendor fees tracked on the group lists replace any "Vendor fees" income lines.
+    roster_fees = [c for c in event.contacts.all() if c.roster and c.fee is not None]
+    vendor_fees = sum((c.fee for c in roster_fees), ZERO)
+    skip = {"Tickets"} | ({"Vendor fees"} if roster_fees else set())
+    other_income = sum((_proj(b) for b in income if b.cat not in skip), ZERO) + vendor_fees
     ticket_income = sum((_proj(b) for b in ticket_lines), ZERO) if ticket_lines else projected_tickets
     proj_income = other_income + ticket_income
     return {

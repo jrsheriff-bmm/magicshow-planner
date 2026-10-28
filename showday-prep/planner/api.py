@@ -38,6 +38,9 @@ New in the final version:
                                           Blackmagic team's "support access" on or off
   (removed) /api/events/<id>/ai-summary/  the per-event AI meeting summary
 
+New in the beta update (more in teams.py and testing.py):
+  POST   /api/events/<id>/send-itinerary/ email one group (or chosen people) their itinerary link
+
 Every function here starts with @api_login_required, which checks the login and
 passes in the user's organization, so nobody can reach another organization's data.
 """
@@ -52,11 +55,11 @@ from django.views.decorators.http import require_http_methods
 from . import ai
 from . import access
 from .access import api_login_required, can_manage, get_membership, memberships
-from .emails import send_approval_decision, send_approval_request, site_url
-from .models import MANAGER_ROLES, short_id, Approval, Event, EventContact, EventFile, Membership, Note, Organization, OrgTemplate, Person, ShareLink, TaskLink, TimeEntry
+from .emails import send_approval_decision, send_approval_request, send_itinerary as email_itinerary, site_url
+from .models import MANAGER_ROLES, short_id, JoinRequest, Approval, Event, EventContact, EventFile, Membership, Note, Organization, OrgTemplate, Person, ShareLink, TaskLink, TimeEntry
 from .serializers import (
     approval_to_dict, clean_id, event_queryset, event_to_dict, file_to_dict, note_to_dict, person_to_dict,
-    save_event_dict, save_note_dict, save_person_dict, save_template_dict, template_to_dict, text,
+    save_event_dict, save_note_dict, save_person_dict, save_template_dict, template_to_dict, text, group_name,
     hour_to_dict, num, num_out, save_hour_dict,
 )
 
@@ -88,12 +91,25 @@ def bad(message, status=400):
 @api_login_required
 def bootstrap(request, org):
     """Everything the screens need when the page first opens."""
+    role = get_membership(request.user, request.session).role
+    # [beta] An organization name typed at sign-up that matched existing ones: offer to ask to join.
+    suggest = request.session.pop("suggest_join", "")
+    suggestions = [{"id": o.id, "name": o.name, "city": o.city}
+                   for o in Organization.objects.filter(name__iexact=suggest, discoverable=True, personal=False)
+                   .exclude(memberships__user=request.user)[:5]] if suggest else []
     return JsonResponse({
-        "user": {"name": request.user.get_full_name() or request.user.username, "email": request.user.email,
+        "user": {"id": request.user.id, "name": request.user.get_full_name() or request.user.username, "email": request.user.email,
                  "team": access.is_team(request.user)},
-        "org": {"id": org.id, "name": org.name, "role": get_membership(request.user, request.session).role,
+        "org": {"id": org.id, "name": org.name, "role": role,
                 "retainerHours": num_out(org.retainer_hours), "hourlyRate": num_out(org.hourly_rate),
-                "plan": org.plan, "supportAccess": org.support_access},
+                "plan": org.plan, "supportAccess": org.support_access, "personal": org.personal, "discoverable": org.discoverable},
+        # [beta] members of this workspace, so they can be picked as owners of deadlines
+        "members": [{"name": m.user.get_full_name() or m.user.username, "email": m.user.email, "role": m.role}
+                    for m in Membership.objects.filter(org=org).exclude(role="support").select_related("user")],
+        "pendingRequests": JoinRequest.objects.filter(org=org, status="pending").count() if can_manage(role) else 0,
+        "myRequests": [{"org": r.org.name, "at": int(r.created_at.timestamp() * 1000)}
+                       for r in JoinRequest.objects.filter(user=request.user, status="pending").select_related("org")],
+        "joinSuggestions": suggestions,
         "orgs": [{"id": m.org_id, "name": m.org.name, "role": m.role} for m in memberships(request.user)],
         "hours": [hour_to_dict(t) for t in TimeEntry.objects.filter(org=org)],
         "events": [event_to_dict(e) for e in event_queryset(org)],
@@ -105,7 +121,8 @@ def bootstrap(request, org):
                       for t in OrgTemplate.objects.filter(org__in=owned_org_ids(request.user, org)).select_related("org")],
         "features": {"ai": bool(settings.ANTHROPIC_API_KEY), "uploads": True,
                      "email": "smtp" in settings.EMAIL_BACKEND,
-                     "newWorkspace": access.can_create_workspace(request.user),
+                     "newWorkspace": True,   # [beta] anyone can create an organization
+                     "clientWorkspace": access.is_team(request.user),
                      "supportTeam": access.SUPPORT_TEAM},
     })
 
@@ -199,7 +216,8 @@ def share_links(request, org, event_id):
     if not event:
         return bad("Event not found.", 404)
     out = {}
-    for audience in SHARE_AUDIENCES:
+    # [beta] One link per group of THIS event (plus Internal and the Deadlines calendar)
+    for audience in [g["id"] for g in (event.groups or [])] + ["Internal", "Deadlines"] if event.groups else SHARE_AUDIENCES:
         link, _ = ShareLink.objects.get_or_create(event=event, audience=audience)
         page = request.build_absolute_uri(f"/s/{link.token}/")
         cal = request.build_absolute_uri(f"/s/{link.token}/calendar.ics")
@@ -346,23 +364,6 @@ def portfolio_ai(request, org):
 
 @require_http_methods(["POST"])
 @api_login_required
-def org_create(request, org):
-    """Create a new client workspace. The person creating it becomes its owner, and it opens right away."""
-    if not access.can_create_workspace(request.user):
-        return bad("Client workspaces are set up by the Blackmagic team.", 403)
-    name = text((read_json(request) or {}).get("name"), 200).strip()
-    if not name:
-        return bad("Type the client's name.")
-    if Organization.objects.filter(name__iexact=name, memberships__user=request.user).exists():
-        return bad("You already have a workspace with that name.", 409)
-    new = Organization.objects.create(name=name, kind=org.kind, plan="retainer")
-    Membership.objects.create(user=request.user, org=new, role="owner")
-    request.session["org_id"] = new.id
-    return JsonResponse({"id": new.id, "name": new.name}, status=201)
-
-
-@require_http_methods(["POST"])
-@api_login_required
 def org_switch(request, org):
     """Switch to another workspace this person belongs to."""
     wanted = (read_json(request) or {}).get("id")
@@ -456,3 +457,50 @@ def hour_detail(request, org, entry_id):
     if data is None:
         return bad("The entry couldn't be read.")
     return JsonResponse(hour_to_dict(save_hour_dict(org, entry_id, data, request.user)))
+
+
+# ---------------------------------------------------------------------------
+# [beta] Email a group (or chosen people) their itinerary
+# ---------------------------------------------------------------------------
+
+@require_http_methods(["POST"])
+@api_login_required
+def send_itinerary(request, org, event_id):
+    """
+    {"group": "<group id>", "only": "unsent" | "all", "note": "...", "contactIds": [...]}
+    Emails each person in the group who has an email address a link to the group's itinerary.
+    With contactIds, only those people (the "Send page" button for one person).
+    """
+    event = Event.objects.filter(pk=clean_id(event_id), org=org).first()
+    if not event:
+        return bad("Save the event first, then try again.", 404)
+    data = read_json(request) or {}
+    group = data.get("group")
+    if group not in {g["id"] for g in (event.groups or [])} | {"Performers", "Vendors", "Venue", "Security"}:
+        return bad("Pick a group to send to.")
+    if "smtp" not in settings.EMAIL_BACKEND and not settings.DEBUG and "locmem" not in settings.EMAIL_BACKEND:
+        return bad("Email isn't set up on this site yet. Copy the link instead.", 503)
+    ids = {clean_id(x) for x in (data.get("contactIds") or []) if clean_id(x)}
+    people = [c for c in event.contacts.all() if group in (c.audiences or [])]
+    if ids:
+        people = [c for c in event.contacts.all() if c.id in ids]
+    elif data.get("only") == "unsent":
+        people = [c for c in people if not c.sent_at]
+    link, _ = ShareLink.objects.get_or_create(event=event, audience=group)
+    url = f"{site_url(request)}/s/{link.token}/"
+    note = text(data.get("note"), 2000).strip()
+    sender = request.user.get_full_name() or request.user.username
+    sent, skipped, failed = [], 0, 0
+    for c in people[:500]:
+        if not c.email or "@" not in c.email:
+            skipped += 1
+            continue
+        try:
+            email_itinerary(c, event, group_name(event, group), url, note, sender, request.user.email)
+            sent.append(c.id)
+        except Exception:
+            log.exception("Itinerary email failed")
+            failed += 1
+    now = timezone.now()
+    EventContact.objects.filter(pk__in=sent).update(sent_at=now)
+    return JsonResponse({"sent": len(sent), "skipped": skipped, "failed": failed, "sentIds": sent, "at": int(now.timestamp() * 1000)})

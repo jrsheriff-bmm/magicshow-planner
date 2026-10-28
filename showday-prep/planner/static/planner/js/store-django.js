@@ -41,9 +41,14 @@ const store = {
     S.templates = d.templates || [];
     S.orgs = d.orgs || []; S.orgRole = d.org ? d.org.role : null;
     S.hours = d.hours || [];
-    S.orgInfo = {plan: d.org ? d.org.plan : '', supportAccess: !!(d.org && d.org.supportAccess)};
+    // [beta] workspace members (for the owner box), join requests, and organizations to offer joining
+    S.members = d.members || []; S.pendingRequests = d.pendingRequests || 0;
+    S.myRequests = d.myRequests || []; S.joinSuggestions = d.joinSuggestions || [];
+    S.orgInfo = {plan: d.org ? d.org.plan : '', supportAccess: !!(d.org && d.org.supportAccess), personal: !!(d.org && d.org.personal), discoverable: !!(d.org && d.org.discoverable)};
     S.orgSettings = {retainerHours: d.org && d.org.retainerHours != null ? d.org.retainerHours : '', hourlyRate: d.org && d.org.hourlyRate != null ? d.org.hourlyRate : ''};
     S.mode = 'live';
+    // [beta] links in join-request emails open the Team page: /?view=team
+    if(/[?&]view=team\b/.test(location.search)){ S.view = 'team'; try { history.replaceState(null, '', location.pathname); } catch(e){} setTimeout(() => loadTeam(true), 0); }
   },
 
   saveEvent(ev){ return api('PUT', '/api/events/'+enc(ev.id)+'/', ev); },
@@ -61,7 +66,26 @@ const store = {
   saveOrgSettings(o){ return api('PUT', '/api/org/settings/', o); },
   saveAccount(o){ return api('PUT', '/api/account/', o); },   // [final] your own name and email
   async switchWorkspace(id){ await api('POST', '/api/orgs/switch/', {id}); location.href = '/'; },
-  async createWorkspace(name){ await api('POST', '/api/orgs/', {name}); location.href = '/'; },
+  async createWorkspace(name, city, client){ await api('POST', '/api/orgs/', {name, city:city||'', client:!!client}); location.href = '/'; },
+
+  /* [beta] organizations: find, ask to join, the Team page */
+  orgSearch(q){ return api('GET', '/api/orgs/search/?q='+enc(q)); },
+  orgJoin(id, message){ return api('POST', '/api/orgs/'+enc(id)+'/join/', {message:message||''}); },
+  team(){ return api('GET', '/api/org/team/'); },
+  teamUpdate(o){ return api('PUT', '/api/org/team/', o); },
+  decideRequest(id, decision){ return api('POST', '/api/org/requests/'+enc(id)+'/', {decision}); },
+  setMemberRole(userId, role){ return api('PUT', '/api/org/members/'+enc(userId)+'/', {role}); },
+  removeMember(userId){ return api('DELETE', '/api/org/members/'+enc(userId)+'/'); },
+  createInvite(role){ return api('POST', '/api/org/invites/', {role:role||'member'}); },
+  revokeInvite(code){ return api('DELETE', '/api/org/invites/'+enc(code)+'/'); },
+
+  /* [beta] email a group (or chosen people) their itinerary */
+  sendItinerary(ev, o){ return api('POST', '/api/events/'+enc(ev.id)+'/send-itinerary/', o); },
+
+  /* [beta] the testing program */
+  telemetry(body){ return fetch('/api/telemetry/', {method:'POST', credentials:'same-origin', keepalive:true, headers:{'X-CSRFToken': csrfToken(), 'Content-Type':'application/json'}, body:JSON.stringify(body)}).catch(() => {}); },
+  testingReport(days){ return api('GET', '/api/testing/report/?days='+enc(days||7)); },
+  feedbackDone(id, done){ return api('PUT', '/api/testing/feedback/'+enc(id)+'/', {done}); },
 
   /* files */
   blobUrl(id){ return '/files/'+id+'/'; },

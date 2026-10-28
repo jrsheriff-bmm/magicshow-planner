@@ -7,6 +7,9 @@ planner/emails.py — [v3] building and sending the emails.
   done_token(...)                  the signed code inside every "Mark done" button
   send_welcome(user, org, base)    [final] "your account is ready" to someone who just signed up
   send_signup_notice(...)          [final] tells the Blackmagic team a new account was created
+  send_join_request(req, to, base) [beta] "Dana asked to join Eastside Arts" to its owners
+  send_join_decision(req, base)    [beta] tells the person whether they were let in
+  send_itinerary(contact, ...)     [beta] one person's group itinerary link, from "Email this group"
 
 Every email has a plain-text version and a simple HTML version
 (templates/planner/email.html). Links in emails need the site's full address,
@@ -49,8 +52,9 @@ def read_done_token(token):
         return None
 
 
-def _send(to, subject, text_body, html_body):
-    msg = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [to] if isinstance(to, str) else to)
+def _send(to, subject, text_body, html_body, reply_to=None):
+    msg = EmailMultiAlternatives(subject, text_body, settings.DEFAULT_FROM_EMAIL, [to] if isinstance(to, str) else to,
+                                 reply_to=[reply_to] if reply_to else None)
     msg.attach_alternative(html_body, "text/html")
     msg.send()
 
@@ -178,3 +182,59 @@ def send_signup_notice(user, org, base):
          "action": f"{base}/admin/planner/organization/{org.id}/change/", "action_label": "Open in admin"},
     ]}]
     _send(to, subject, text_body, _html(subject, "Someone just created a MagicShow account.", sections, ""))
+
+
+# ---------------------------------------------------------------------------
+# [beta] Organizations and group emails
+# ---------------------------------------------------------------------------
+
+def send_join_request(req, to, base):
+    if not to:
+        return
+    who = req.user.get_full_name() or req.user.email or req.user.username
+    subject = f"{who} asked to join {req.org.name} on MagicShow"
+    lines = [f"{who} ({req.user.email}) asked to join {req.org.name}."]
+    if req.message:
+        lines += ["", f"Their note: {req.message}"]
+    lines += ["", f"Approve or decline on the Team page: {base}/?view=team", "", "— MagicShow"]
+    items = [{"kind": "Who", "tag": "", "text": f"{who} · {req.user.email}"}]
+    if req.message:
+        items.append({"kind": "Note", "tag": "", "text": req.message})
+    items.append({"kind": "Decide", "tag": "", "text": "Open the Team page to approve or decline.", "action": f"{base}/?view=team", "action_label": "Open the Team page"})
+    _send(sorted(set(to)), subject, "\n".join(lines),
+          _html(subject, f"Someone wants to join {req.org.name}.", [{"heading": req.org.name, "items": items}],
+                "You got this because you're an owner of this organization."))
+
+
+def send_join_decision(req, base):
+    if not req.user.email:
+        return
+    ok = req.status == "approved"
+    subject = f"You're in: {req.org.name}" if ok else f"Your request to join {req.org.name}"
+    body = (f"Your request to join {req.org.name} was approved. Open MagicShow and pick it in the Workspace list: {base}/"
+            if ok else f"Your request to join {req.org.name} wasn't approved. If you think that's a mistake, contact the organization directly.")
+    _send(req.user.email, subject, body + "\n\n— MagicShow",
+          _html(subject, body, [], "You got this because you asked to join an organization on MagicShow."))
+
+
+def send_itinerary(contact, event, group, link, note, sender, sender_email=""):
+    """One person's itinerary for their group. Sent from "Email this group" (or one person) on the Share pages tab."""
+    from .schedule import fmt_long
+    first = (contact.name or contact.org_name or "there").split(" ")[0]
+    subject = f"Your {group} itinerary: {event.name}, {fmt_long(event.date)}"
+    lines = [f"Hi {first},", "", f"Here are the details for {event.name} on {fmt_long(event.date)}"
+             + (f" at {event.venue}" if event.venue else "") + "."]
+    if note:
+        lines += ["", note]
+    lines += ["", f"Your itinerary (it updates if plans change): {link}"]
+    if contact.booth:
+        lines += ["", f"On our list as: {contact.booth}"]
+    lines += ["", f"Questions? Reply to this email to reach {sender}." if sender_email else f"Sent by {sender}.", "", "— MagicShow"]
+    items = [{"kind": "Itinerary", "tag": "", "text": f"Your schedule, who to contact and what to bring.", "action": link, "action_label": "Open your itinerary"}]
+    if note:
+        items.insert(0, {"kind": "Note", "tag": "", "text": note})
+    if contact.booth:
+        items.append({"kind": "On our list as", "tag": "", "text": contact.booth})
+    _send(contact.email, subject, "\n".join(lines),
+          _html(subject, f"Hi {first}, here are your details for {event.name}.", [{"heading": f"{event.name} · {fmt_long(event.date)}", "items": items}],
+                f"Sent by {sender} with MagicShow. The link is private to your group; please don't forward it."), reply_to=sender_email or None)

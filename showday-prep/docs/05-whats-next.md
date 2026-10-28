@@ -19,6 +19,14 @@ One login across several client workspaces, three consulting templates (event co
 interview story, camera training), deadlines after show day, and the Hours page with the
 monthly retainer.
 
+## Done in the beta
+
+The 13 ranked changes from Mia's session and JR's call: dated checklist steps, the feedback inbox
+and error capture, plain-language help, your own groups, list import and group email,
+festival layout pieces, organizations with join requests and invite links, series, contact tags,
+the usage log and Testing report, "attendance not counted", ticketing and vendor fees, and
+custom tabs. Details in docs/10.
+
 ## Next up (from the brainstorm)
 
 | Idea | Notes |
@@ -38,7 +46,9 @@ monthly retainer.
 | No live updates | If JR changes something, you see it after refreshing | Same time as above |
 | Sign-up is free and open | Anyone can create an account at /signup/, and nothing charges them yet. Until payments are connected, set `SIGNUP_CODE` so only people you give the code to can sign up, or `ALLOW_SIGNUP=False` to close it (docs/08) | Before advertising the address. Next step: Stripe subscriptions tied to each workspace's plan |
 | New accounts aren't asked to confirm their email | A mistyped email still makes an account; that person just can't reset their password | With payments |
-| One login per subscriber workspace | A subscriber can't invite teammates themselves yet. An admin adds them: create the login in /admin/, then `python manage.py setup_org "Workspace name" --user theirlogin --role member` | When a subscriber asks for a second seat |
+| Seats aren't limited or charged | Owners can now invite as many members as they like (Team page). Nothing counts seats against a plan yet | With payments |
+| Group lists import up to 2,000 rows at a time | Larger files are cut at 2,000 with a message. Excel files are read with a library loaded from the internet (cdnjs), like the PDF maker | Only if a list is bigger |
+| Itinerary emails go out one by one while you wait | One press sends to at most 500 people (press again for the rest with “Only people who haven’t had it”). Thousands would need a background job | If a group passes about 500 |
 | Word files are .doc, not .docx | They open fine in Word and Google Docs | Only if a client asks |
 | Floor-plan uploads are images only | PDFs of floor plans need converting to PNG/JPG first | Low priority |
 | The PDF maker loads from the internet (cdnjs) | Download PDF fails if that site is blocked | Low priority: copy the file into `static/` |

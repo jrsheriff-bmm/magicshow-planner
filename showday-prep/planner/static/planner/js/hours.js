@@ -74,9 +74,9 @@ function workspaceHTML(){
   const list = S.orgs || [];
   let h = '<div class="railsec"><div class="eyebrow">Workspace</div>';
   if(list.length > 1) h += '<select id="orgPick" class="inline-in" style="margin:0 10px;max-width:calc(100% - 20px)" aria-label="Switch workspace">'+list.map(o => '<option value="'+o.id+'"'+(S.org && String(o.id) === String(S.org.id) ? ' selected' : '')+'>'+esc(o.name)+'</option>').join('')+'</select>';
-  // [final] Client workspaces are a Blackmagic team tool; people who signed up on their own have just their workspace.
+  // [beta] Anyone can create an organization now; ticking “Client workspace” in the pop-up (team.js) is for the Blackmagic team only.
   const canAdd = !S.features || S.features.newWorkspace !== false;
-  if(canAdd) h += '<button class="navbtn" data-act="newWorkspace">+ New client workspace</button>';
+  if(canAdd) h += '<button class="navbtn" data-act="newWorkspace">+ New organization</button>';   // [beta] the pop-up is in team.js
   return list.length > 1 || canAdd ? h + '</div>' : '';
 }
 MODALS.newWorkspace = () => {

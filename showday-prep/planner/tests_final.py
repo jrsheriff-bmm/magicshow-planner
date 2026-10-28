@@ -50,9 +50,12 @@ class AccountTests(TestCase):
         self.assertEqual(data["org"]["plan"], "subscription")
         self.assertFalse(data["org"]["supportAccess"])
         self.assertEqual(data["events"], [])
-        self.assertEqual([o["name"] for o in data["orgs"]], ["Eastside Youth Arts"])
-        self.assertFalse(data["features"]["newWorkspace"])   # client workspaces are a Blackmagic tool
-        self.assertEqual(self.client.post("/api/orgs/", json.dumps({"name": "X"}), content_type="application/json").status_code, 403)
+        # [beta] everyone also gets a personal workspace; the organization they typed opens first
+        self.assertEqual([o["name"] for o in data["orgs"]], ["Dana's events", "Eastside Youth Arts"])
+        self.assertTrue(data["features"]["newWorkspace"])     # anyone can create an organization now
+        self.assertFalse(data["features"]["clientWorkspace"])  # client (retainer) workspaces stay a Blackmagic tool
+        r = self.client.post("/api/orgs/", json.dumps({"name": "X", "client": True}), content_type="application/json")
+        self.assertEqual(Organization.objects.get(pk=r.json()["id"]).plan, "subscription")
         # a welcome email to them, and a notice to the team
         self.assertEqual(sorted(m.to[0] for m in mail.outbox), ["dana@example.com", "h@blackmagic.example"])
         # the team can't see a subscriber's workspace

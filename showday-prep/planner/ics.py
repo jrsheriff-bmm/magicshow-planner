@@ -73,7 +73,8 @@ def audience_calendar(event, audience):
                 "start": at_minutes(event.date, r["s"]), "end": at_minutes(event.date, max(r["e"], r["s"] + 5)),
                 "location": location,
             })
-    return _cal(f"{event.name} · {audience}", items)
+    from .serializers import group_name
+    return _cal(f"{event.name} · {group_name(event, audience)}", items)
 
 
 def deadlines_calendar(event):
@@ -84,6 +85,10 @@ def deadlines_calendar(event):
             items.append({"uid": m.id, "all_day": True, "date": due_date(event, m.offset),
                           "title": ("HARD DEADLINE: " if m.hard else "") + f"{m.title} ({event.name})",
                           "desc": "\n".join(x for x in [m.desc, f"Owner: {m.owner or 'unassigned'}"] if x)})
+            for st in m.checklist or []:   # [beta] checklist steps with their own due day
+                if st.get("offset") is not None and not st.get("done"):
+                    items.append({"uid": f"{m.id}-{st.get('id')}", "all_day": True, "date": due_date(event, st["offset"]),
+                                  "title": f"Step: {st.get('text')} ({m.title}, {event.name})", "desc": f"Owner: {m.owner or 'unassigned'}"})
         for c in event.compliance_items.all():
             items.append({"uid": c.id, "all_day": True, "date": due_date(event, c.offset),
                           "title": f"Paperwork due: {c.item} ({event.name})", "desc": f"Responsible: {c.owner or 'unassigned'}"})
